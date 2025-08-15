@@ -1,0 +1,8 @@
+PROTEIN	genewise	5
+PROTEIN	tblastn	1
+TRANSCRIPT	blastn	1
+TRANSCRIPT	gmapExon	1	
+TRANSCRIPT	gmapcDNA	1	
+TRANSCRIPT	exonerate:cdna2genome	1
+ABINITIO_PREDICTION	AUGUSTUS	0.3
+

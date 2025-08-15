@@ -1,0 +1,25 @@
+name: AnnCX
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - repeatmasker=4.1.5
+  - gmap
+  - blast
+  - augustus
+  - wise2
+  - exonerate
+  - evidencemodeler
+  - artemis
+  - bedtools
+  - pyfastx
+  - seqkit
+  - mafft
+  - r-base
+  - r-data.table
+  - r-ggplot2
+  - r-dplyr
+  - r-stringr
+  - r-magrittr
+  - pandas
