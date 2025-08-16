@@ -187,7 +187,7 @@ def run_pipeline(current_dir, output_dir, args):
     
 
     ## Step 1. Extract genomic region of interest from a larger genomic sequence using two flanking genes
-    if (args.flanking):
+    if (os.path.abspath(args.flanking)):
         # Run gmap to annotate the flanking genes
         print("=========================================================================================")
         print("*** STEP 1. Extract ROI")
@@ -204,14 +204,14 @@ def run_pipeline(current_dir, output_dir, args):
         
         print("1.1.2. Run GMAP")
         genome_gmap_dir = create_out_dir(roi_subdir, '2_gmap')
-        run_bash_script('gmap.sh', 'gmap_run', str(genomes_list_input_file), str(genome_gmap_build_dir), args.flanking, str(genome_gmap_dir), args.namegenes, "flanking", "genome", args.threads)
+        run_bash_script('gmap.sh', 'gmap_run', str(genomes_list_input_file), str(genome_gmap_build_dir), os.path.abspath(args.flanking), str(genome_gmap_dir), args.namegenes, "flanking", "genome", args.threads)
         
         # Find whether the flanking genes were found 
         print("-----------------------------------------------------------------------------------------")
         print("1.2. Found flanking genes:")
         print("-----------------------------------------------------------------------------------------")
         found_flanking_dir = create_out_dir(roi_subdir, '3_found_flanking_genes')
-        yes_flanking, no_flanking = find_found_flanking_genes(args.flanking, str(genome_gmap_dir), str(found_flanking_dir), args.namegenes)
+        yes_flanking, no_flanking = find_found_flanking_genes(os.path.abspath(args.flanking), str(genome_gmap_dir), str(found_flanking_dir), args.namegenes)
         
         print(f"Genomes with both flanking genes found: {yes_flanking}")
         print_results(yes_flanking)
@@ -329,36 +329,92 @@ def run_pipeline(current_dir, output_dir, args):
     print("-----------------------------------------------------------------------------------------")
     # Make blast database with makeblastdb
     print("4.1.1. Make BLAST database")
-    run_bash_script('blast_makeblastdb_ROI_hardmasked.sh', 'makeblastdb_run', str(roi_hardmasked_dir), str(makeblastdb_dir), str(genomes_list_process_file))
+    run_bash_script('blast_makeblastdb_ROI_hardmasked.sh', 
+                    'makeblastdb_run', 
+                    str(roi_hardmasked_dir), 
+                    str(makeblastdb_dir), 
+                    str(genomes_list_process_file))
 
     print("4.1.2. Run BLASTN")
-    run_bash_script('blastn_query_ROI_hardmasked_out6.sh', 'blastn_run', str(makeblastdb_dir), args.querycDNA, str(blastn_raw_dir), str(genomes_list_process_file), args.namegenes, args.threads)
+    run_bash_script('blastn_query_ROI_hardmasked_out6.sh', 
+                    'blastn_run', 
+                    str(makeblastdb_dir), 
+                    os.path.abspath(args.querycDNA), 
+                    str(blastn_raw_dir), 
+                    str(genomes_list_process_file), 
+                    args.namegenes, 
+                    args.threads)
 
     print("4.1.3. Run TBLASTN")
-    run_bash_script('tblastn_query_ROI_hardmasked_out6.sh', 'tblastn_run', str(makeblastdb_dir), args.queryprot, str(tblastn_raw_dir), str(genomes_list_process_file), args.namegenes, args.threads)
+    run_bash_script('tblastn_query_ROI_hardmasked_out6.sh', 
+                    'tblastn_run', 
+                    str(makeblastdb_dir), 
+                    os.path.abspath(args.queryprot), 
+                    str(tblastn_raw_dir), 
+                    str(genomes_list_process_file), 
+                    args.namegenes, 
+                    args.threads)
  
     print("-----------------------------------------------------------------------------------------")
     print("4.2. Run GMAP")
     print("-----------------------------------------------------------------------------------------")
     # Make GMAP database with gmap_build
     print("4.2.1. Make GMAP database")
-    run_bash_script('gmap_build.sh', 'gmap_build_run', str(genomes_list_process_file), str(gmap_build_dir), str(roi_hardmasked_dir), "ROI", args.threads)
+    run_bash_script('gmap_build.sh', 
+                    'gmap_build_run', 
+                    str(genomes_list_process_file), 
+                    str(gmap_build_dir), 
+                    str(roi_hardmasked_dir), 
+                    "ROI", 
+                    args.threads)
 
     print("4.2.2. Run GMAP cDNA query")
-    run_bash_script('gmap.sh', 'gmap_run', str(genomes_list_process_file), str(gmap_build_dir), args.querycDNA, str(gmap_cDNA_raw_dir), args.namegenes, "cDNA", "ROI", args.threads)
+    run_bash_script('gmap.sh', 
+                    'gmap_run', 
+                    str(genomes_list_process_file), 
+                    str(gmap_build_dir), 
+                    os.path.abspath(args.querycDNA), 
+                    str(gmap_cDNA_raw_dir), 
+                    args.namegenes, 
+                    "cDNA", 
+                    "ROI", 
+                    args.threads)
 
     print("4.2.3. Run GMAP exon query")
-    run_bash_script('gmap.sh', 'gmap_run', str(genomes_list_process_file), str(gmap_build_dir), args.queryexon, str(gmap_exon_raw_dir), args.namegenes, "exon", "ROI", args.threads)
+    run_bash_script('gmap.sh', 
+                    'gmap_run', 
+                    str(genomes_list_process_file), 
+                    str(gmap_build_dir), 
+                    os.path.abspath(args.queryexon), 
+                    str(gmap_exon_raw_dir), 
+                    args.namegenes, 
+                    "exon", 
+                    "ROI", 
+                    args.threads)
 
     print("-----------------------------------------------------------------------------------------")
     print("4.3. Run GeneWise")
     print("-----------------------------------------------------------------------------------------")
-    run_bash_script('genewise_query_ROI_hardmasked.sh', 'genewise_run', str(roi_hardmasked_dir), args.queryprot, str(genewise_raw_dir), str(genomes_list_process_file), args.namegenes)
+    run_bash_script('genewise_query_ROI_hardmasked.sh', 
+                    'genewise_run', 
+                    str(roi_hardmasked_dir), 
+                    os.path.abspath(args.queryprot), 
+                    str(genewise_raw_dir), 
+                    str(genomes_list_process_file), 
+                    args.namegenes)
 
     print("-----------------------------------------------------------------------------------------")
     print("4.4. Run Exonerate")
     print("-----------------------------------------------------------------------------------------")
-    run_bash_script('exonerate_query_ROI_hardmasked.sh', 'exonerate_run', str(roi_hardmasked_dir), args.querycDNA, str(exonerate_raw_dir), str(genomes_list_process_file), args.namegenes, args.maxintron, args.threads)
+    run_bash_script('exonerate_query_ROI_hardmasked.sh', 
+                    'exonerate_run', 
+                    str(roi_hardmasked_dir), 
+                    os.path.abspath(args.querycDNA), 
+                    str(exonerate_raw_dir), 
+                    str(genomes_list_process_file), 
+                    args.namegenes, 
+                    args.maxintron, 
+                    args.threads)
 
     print("-----------------------------------------------------------------------------------------")
     print("4.5. Run AUGUSTUS")
@@ -366,7 +422,11 @@ def run_pipeline(current_dir, output_dir, args):
 
     # Make protein profile
     print("4.5.1. Make protein profile")
-    output_protprof = run_bash_script('make_augustus_protprof.sh', 'make_augustus_protprof', args.queryprot, str(protprof_dir), args.namegenes)
+    output_protprof = run_bash_script('make_augustus_protprof.sh', 
+                                      'make_augustus_protprof', 
+                                      os.path.abspath(args.queryprot), 
+                                      str(protprof_dir), 
+                                      args.namegenes)
     
     if output_protprof:
         protprof_match = re.search(r'PROTPROF_FOLDER=(.*)', output_protprof)

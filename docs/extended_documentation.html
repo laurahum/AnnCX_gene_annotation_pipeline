@@ -17,7 +17,7 @@ representation of problematic genome assemblies that commonly affect complex reg
 results once the pipeline has completed its execution.
 
 
-Custom supplementary tools:
+Custom supplementary tools to assess quality of assembly:
 
 (1)    <b>identify_pred2ref:</b> gene identification process
 This feature performs a BLAST search between predicted and reference FASTA sequences, followed by 
@@ -38,21 +38,21 @@ study, aiding the study of gene order conservation and neighboring genes across 
 identify orthologs. 
 
 (2)    <b>identify_rearrangements:</b> identify exon-level rearrangements
-The direct assessment of assembly quality in complex genomic regions presents unique challenges as 
-conventional metrics used for whole-genome assemblies, such as N50 and BUSCO, are inadequate (Peel 
-et al., 2022). The assessment of these regions typically relies on gene presence and structural 
-integrity, which requires pre-existing references for the genomic region of study. For this 
-reason, we developed the third feature, identify_rearrangements, which complements AnnCX’s 
-annotation of ambiguous nucleotides, and provides an exon-level assessment of the quality of the 
-assembly. This feature uses Exonerate to conduct an exon-by-exon analysis of the different 
-predicted genes to detect potential rearrangements. Detecting any potential sequence 
-rearrangements is essential, as such rearrangements can significantly impact the interpretation of 
-gene content within the annotated region. In addition, the number and sequence of exons found 
-within different genes can serve as one of many indicators of potential gene homology. While some 
-rearrangements may result from biological events, in the assemblies of complex genomic regions 
-they are often due to artificial causes when sequencing depth is insufficient (Salzberg, 2019). 
-Therefore, this feature can help targeted sequencing approaches by guiding them to regions with a 
-higher number of artificial rearrangements. 
+The identify_rearrangements feature uses Exonerate to conduct an exon-by-exon comparison between 
+predicted and reference genes to identify mismatches in the exon sequences. The exon-level 
+rearrangements detected by this method can result from either biological processes or assembly 
+artifacts, the latter commonly occurring in the assemblies of complex genomic regions when 
+sequencing depth is insufficient to resolve the repetitive DNA in these areas (Peel et al., 2022). 
+Detecting rearrangements of biological origin can advance our understanding of the genes under 
+study, while identifying artificial rearrangements is crucial, as they can significantly affect 
+the interpretation of gene content within the annotated region. This feature provides an exon-
+level assessment of the quality of the assembly which, combined with AnnCX’s annotation of 
+ambiguous nucleotides, can help guide targeted sequencing efforts towards regions with a high 
+number of artificial rearrangements, thereby reducing overall costs. Moreover, the number and 
+sequence composition of exons found within different genes can serve as an additional indicator of 
+potential gene homology.
+
+Other custom supplementary tools
 
 (3)    <b>annotation2fasta:</b> convert annotation GFF3 files into FASTA sequences
 This feature, which automatically converts the raw consensus annotation output into FASTA 
@@ -107,6 +107,11 @@ files will be annotated, but the new annotations may not appear in the Artemis i
 genome files contain both flanking genes and, by default, prompts whether to continue extract ROI 
 and annotate on those genomes. Use --skip-prompt to proceed automatically without asking for 
 confirmation.*
+
+*EVM is run using the recommended evidence weights described by the authors 
+(see: https://doi.org/10.1186/gb-2008-9-1-r7)
+If the user needs to adjust these parameters, the weights file is located at: 
+../weights/weights_recommended.txt*
 
 
 usage: AnnCX.py [-h] --genome GENOME --namegenes NAMEGENES --querycDNA QUERYCDNA --queryprot
@@ -430,6 +435,24 @@ options:
   			output files will be stored named 'Identify_pred2ref'
 
   			Example: --outdir /path/to/output
+  			
+  --gapopen GAPOPEN
+  			(OPTIONAL) Number to run --gapopen open_penalty
+                        argument in BLASTN (Default = 1)
+                        Taken from BLASTN documentation (<a href=https://www.ncbi.nlm.nih.gov/books/NBK279684/table/appendices.T.blastn_application_options/>https://www.ncbi.nlm.nih.gov/books/NBK279684/table/appendices.T.blastn_application_options/</a>)
+                         	-gapopen &lt;Integer&gt;
+   				Cost to open a gap
+  
+  			Example: --gapopen 2	
+  
+  --gapextend GAPEXTEND
+  			(OPTIONAL) Number to run --gapextend extend_penalty
+                        argument in BLASTN (Default = 1)
+                        Taken from BLASTN documentation (<a href=https://www.ncbi.nlm.nih.gov/books/NBK279684/table/appendices.T.blastn_application_options/>https://www.ncbi.nlm.nih.gov/books/NBK279684/table/appendices.T.blastn_application_options/</a>)
+                         	-gapextend &lt;Integer&gt;
+                        	Cost to extend a gap
+                        
+  			Example: --gapextend 2
   			
   --threads THREADS     
   			(OPTIONAL) Number of threads that can be used to run this feature. 

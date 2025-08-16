@@ -8,6 +8,7 @@ Created on Fri Feb 21 06:21:55 2025
 
 # Standard library imports
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -36,13 +37,14 @@ def main():
     args = parser.parse_args()
 
     # Make base output directory 
-    output_dir = create_out_dir(args.outdir, 'Identify_rearrangements', path=True)
+    output_dir_arg = os.path.abspath(args.outdir) # get absolute path
+    output_dir = create_out_dir(output_dir_arg, 'Identify_rearrangements', path=True)
     exonerate_dir = create_out_dir(output_dir, 'Exonerate_output')
 
     print ("1. Run Exonerate")
     exonerate_output = run_bash_script('exonerate_identify_artificial_rearrangements.sh', 'exonerate_run_identify_rearrangements', 
-                                       args.subject,
-                                       args.query,
+                                       os.path.abspath(args.subject),
+                                       os.path.abspath(args.query),
                                        exonerate_dir,
                                        args.namegenome,
                                        args.threads)
@@ -53,7 +55,7 @@ def main():
 
     run_R_script('Exonerate_heatmap_identify_artificial_rearrangements.R', 'Exonerate_heatmaps',
                  str(exonerate_file_path),
-                 args.namegenes,
+                 os.path.abspath(args.namegenes),
                  str(exonerate_heatmaps_dir),
                  args.namegenome)
 

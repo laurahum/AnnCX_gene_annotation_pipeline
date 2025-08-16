@@ -7,7 +7,7 @@
 # Description: This post-processing feature uses BLASTN to search the sequences of reference vs 
 # predicted genes to identify genes found by the genomic annotation process.
 #
-# Usage: blastn_run_identify_gene <subject_file> <query_file> <output_dir> <type_fasta_seq_query> <type_fasta_seq_subject> <name_genome> [threads]
+# Usage: blastn_run_identify_gene <subject_file> <query_file> <output_dir> <type_fasta_seq_query> <type_fasta_seq_subject> <name_genome> [gapopen] [gapextend] [threads]
 #
 # Parameters:
 #   $1 (subject_file): File with FASTA sequences of reference
@@ -16,10 +16,12 @@
 #   $4 (type_fasta_seq_query): Type of FASTA query sequence being used (e.g., "cDNA", "exon_all")
 #   $5 (type_fasta_seq_subject): Type of FASTA subject sequence being used (e.g., "cDNA", "exon_all")
 #   $6 (name_genome): Name of the genome in which the genes were annotated (e.g., "Macaca_mulatta")
-#   $7 (threads): Optional. Number of CPU threads to use for blastn
+#   $7 (gapopen): Int to run the -gapopen open_penalty argument in BLASTN (e.g., 1)
+#   $8 (gapextend): Int to run the -gapextend extend_penalty argument in BLASTN (e.g., 1)
+#   $9 (threads): Optional. Number of CPU threads to use for blastn (e.g., 4)
 #
 # Example:
-#   blastn_run_identify_gene "/path/to/reference_sequences.fasta" "/path/to/predicted_sequences.fasta" "/path/to/blastn_results" "cDNA" "cDNA" "Macaca_mulatta" 4
+#   blastn_run_identify_gene "/path/to/reference_sequences.fasta" "/path/to/predicted_sequences.fasta" "/path/to/blastn_results" "cDNA" "cDNA" "Macaca_mulatta" 1 1 4
 #
 # Notes: 
 # - Ensure that BLASTN is installed and accessible in the current environment.
@@ -36,10 +38,12 @@ blastn_run_identify_gene(){
     local type_fasta_seq_query="$4"
     local type_fasta_seq_subject="$5"
     local name_genome="$6"
-    local threads="${7:-false}"
+    local gapopen="$7"
+    local gapextend="$8"
+    local threads="${9:-false}"
     
     # Prepare the blastn command
-    local cmd="blastn -subject \"$subject_file\" -query \"$query_file\" -gapopen 1 -gapextend 1 -outfmt \"6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovs\""
+    local cmd="blastn -subject \"$subject_file\" -query \"$query_file\" -gapopen \"$gapopen\" -gapextend \"$gapextend\" -outfmt \"6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovs\""
         
     # Add threads option if specified
     if [[ "$threads" != "false" && "$threads" =~ ^[0-9]+$ ]]; then

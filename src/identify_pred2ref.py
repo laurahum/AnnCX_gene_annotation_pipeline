@@ -33,22 +33,27 @@ def main():
     parser.add_argument('--typeseq_subject', type=str, required=True, help='Name of the type of subject fasta sequences. Example: --typeseq_subject cDNA') # String
     parser.add_argument('--namegenome', type=str, required=True, help='Name of the genome in which the genes were predicted. Example: --namegenome Homo_sapiens') # String
     parser.add_argument('--outdir', type=check_dir_path, required=True, help='Directory to save the output files. Example: --outdir /path/to/output') # Directory
+    parser.add_argument('--gapopen', default=1, type=int, help='(OPTIONAL) Number to run --gapopen open_penalty argument in BLASTN (Default = 1). Example: --gapopen 2') # Int
+    parser.add_argument('--gapextend', default=1, type=int, help='(OPTIONAL) Number to run --gapextend extend_penalty argument in BLASTN (Default = 1). Example: --gapextend 2') # Int
     parser.add_argument('--threads', default=-1, type=int, help='(OPTIONAL) Number of threads that can be used to run this feature. Example: --threads 3') # Int
     
     args = parser.parse_args()
 
     # Make base output directory 
-    output_dir = create_out_dir(args.outdir, 'Identify_pred2ref', path=True)
+    output_dir_arg = os.path.abspath(args.outdir) # get absolute path
+    output_dir = create_out_dir(output_dir_arg, 'Identify_pred2ref', path=True)
     blastn_dir = create_out_dir(output_dir, 'BLASTN_output')
 
     print ("1. Run BLASTN")
     blastn_output = run_bash_script('blastn_identify_predicted_genes.sh', 'blastn_run_identify_gene', 
-                                    args.subject,
-                                    args.query,
+                                    os.path.abspath(args.subject),
+                                    os.path.abspath(args.query),
                                     blastn_dir,
                                     args.typeseq_query,
                                     args.typeseq_subject,
                                     args.namegenome,
+                                    args.gapopen,
+                                    args.gapextend,
                                     args.threads)
     
     print ("2. Make heatmaps")

@@ -35,7 +35,8 @@ def main():
     args = parser.parse_args()    
 
     # Make base output directory 
-    output_dir = create_out_dir(args.outdir, f'annotation2fasta_{args.nameproject}', path=True)
+    output_dir_arg = os.path.abspath(args.outdir) # get absolute path
+    output_dir = create_out_dir(output_dir_arg, f'annotation2fasta_{args.nameproject}', path=True)
     
     # Create a TXT file with the name of the genome (necessary due to the code of annotation2fasta.py)
     genome_txt_dir = create_out_dir(output_dir, 'genome_txt')
@@ -49,8 +50,8 @@ def main():
     genome_txt_dir = create_out_dir(output_dir, 'fasta_sequences')
     get_fasta_sequences_annotation(str(genome_txt_file), 
                                    args.nameproject,
-                                   str(args.genome),
-                                   str(args.annotation),
+                                   os.path.abspath(str(args.genome)),
+                                   os.path.abspath(str(args.annotation)),
                                    str(genome_txt_dir))
 
 
