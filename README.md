@@ -7,9 +7,11 @@ AnnCX is gene annotation pipeline designed for the analysis of gene-rich complex
 - Support for manual curation by implementing an automatic visualization of the raw annotation results once the pipeline has completed its execution.
 <br>
 
-Custom supplementary tools: 
+Custom supplementary tools to assess the quality of genome assembly: 
 - **identify_pred2ref**: to help aid on the gene identification process
 - **identify_rearrangements**: to help identify exon-level rearrangements.
+
+Other custom supplementarty tools:
 - **annotation2fasta**: convert annotation GFF3 files into FASTA sequences
 <br>
 
