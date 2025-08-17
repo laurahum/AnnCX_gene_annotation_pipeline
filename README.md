@@ -75,9 +75,10 @@ Other custom supplementarty tools:
    
 3. Open results in Artemis again: 
 
-  After the pipeline has finished running and you have closed Artemis, you can reopen Artemis within the conda environment to visualize the annotation results again:
+   After the pipeline has finished running and you have closed Artemis, you can reopen Artemis within the conda environment to visualize the annotation results again:
   
-  `(AnnCX) user@computer:~/path/to/pipeline/folder$ art`
+   `(AnnCX) user@computer:~/path/to/pipeline/folder$ art`
+
 
 <br>
 
