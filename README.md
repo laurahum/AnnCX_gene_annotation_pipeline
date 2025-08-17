@@ -70,14 +70,14 @@ Other custom supplementarty tools:
    Artemis is opened automatically for the visualization of the annotation output produced by AnnCX
    <br>
    
-   Step 1: extract ROI = OPTIONAL - If the user provides flanking regions, AnnCX checks how many genome files contain both flanking genes and, by default, prompts whether to continue extract ROI and annotate on those genomes. Use --skip-prompt to proceed automatically with the extraction without asking for confirmation.
+   Step 1: extract ROI = OPTIONAL - If the user provides flanking regions, AnnCX checks how many genome files contain both flanking genes and, by default, prompts whether to continue extract ROI and annotate on those genomes. Use `--skip-prompt` to proceed automatically with the extraction without asking for confirmation.
    
    
 3. Open results in Artemis again: 
 
-After the pipeline has finished running and you have closed Artemis, you can reopen Artemis within the conda environment to visualize the annotation results again:
-
-   `(AnnCX) user@computer:~/path/to/pipeline/folder$ art`
+  After the pipeline has finished running and you have closed Artemis, you can reopen Artemis within the conda environment to visualize the annotation results again:
+  
+     `(AnnCX) user@computer:~/path/to/pipeline/folder$ art`
 
 <br>
 
