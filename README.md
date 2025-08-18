@@ -171,4 +171,4 @@ This feature produces one heatmap plot (SVG) per gene predicted in an annotated 
 <br>
 
 ________________________________________________________________________________
-Full documentation: ![AnnCX_documentation](https://github.com/laurahum/AnnCX_gene_annotation_pipeline/docs/extended_documentation.html)
+Full documentation: ![AnnCX_documentation](https://laurahum.github.io/AnnCX_gene_annotation_pipeline/)
