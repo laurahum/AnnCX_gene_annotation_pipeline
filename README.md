@@ -55,15 +55,15 @@ Other custom supplementarty tools:
    
    ```
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./AnnCX.py \
-   --genome /path/to/pipeline/folder/examples/genome \
+   --genome examples/genome \
    --namegenes NKG2 \
-   --querycDNA /path/to/pipeline/folder/examples/Genome_annotation/cDNA_sequences.fasta \
-   --queryprot /path/to/pipeline/folder/examples/Genome_annotation/protein_sequences.fasta \
-   --queryexon /path/to/pipeline/folder/examples/Genome_annotation/exon_sequences.fasta \
+   --querycDNA examples/Genome_annotation/cDNA_sequences.fasta \
+   --queryprot examples/Genome_annotation/protein_sequences.fasta \
+   --queryexon examples/Genome_annotation/exon_sequences.fasta \
    --spsrepeatmasker primates \
    --spsaugustus human \
    --outdir /path/to/output/folder/ \
-   --flanking /path/to/pipeline/folder/examples/Genome_annotation/flanking_regions.fasta \
+   --flanking examples/Genome_annotation/flanking_regions.fasta \
    --threads your_threads
    ```
    
@@ -96,13 +96,12 @@ This feature produces a heatmap plot (SVG) for the set of genes predicted in an 
    
    ```
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/identify_pred2ref.py \
-   --subject /path/to/pipeline/folder/examples/Genome_annotation/cDNA_sequences.fasta \
-   --query /path/to/pipeline/folder/examples/Genome_annotation/cDNA_sequences.fasta \
+   --subject examples/Genome_annotation/cDNA_sequences.fasta \
+   --query examples/Genome_annotation/cDNA_sequences.fasta \
    --typeseq_query cDNA \
    --typeseq_subject cDNA \
    --namegenome Macaca_mulatta \
    --outdir /path/to/output/folder \
-   --threads your_threads
    ```
 <br>
 
@@ -125,9 +124,9 @@ This feature produces one heatmap plot (SVG) per gene predicted in an annotated 
    
    ```
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/identify_rearrangements.py \
-   --subject /path/to/pipeline/folder/examples/Genome_annotation/exon_sequences.fasta \
-   --query /path/to/pipeline/folder/examples/Genome_annotation/exon_sequences.fasta \
-   --namegenes /path/to/pipeline/folder/examples/Identify_rearrangements/gene_names.txt
+   --subject examples/Genome_annotation/exon_sequences.fasta \
+   --query examples/Genome_annotation/exon_sequences.fasta \
+   --namegenes examples/Identify_rearrangements/gene_names.txt
    --namegenome Macaca_mulatta \
    --outdir /path/to/output/folder \
    --threads your_threads
@@ -155,8 +154,8 @@ This feature produces one heatmap plot (SVG) per gene predicted in an annotated 
    
    ```
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/annotation2fasta.py \
-   --annotation /path/to/pipeline/folder/examples/annotate2fasta \
-   --genome /path/to/pipeline/folder/examples/genome \
+   --annotation examples/annotate2fasta \
+   --genome examples/genome \
    --namegenome Macaca_mulatta \
    --nameproject extract_annotation_NKG2 \
    --outdir /path/to/output/folder

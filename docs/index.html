@@ -241,15 +241,15 @@ options:
    Example using the example data provided in the repository:
    
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./AnnCX.py \
-   --genome /path/to/pipeline/folder/examples/genome \
+   --genome examples/genome \
    --namegenes NKG2 \
-   --querycDNA /path/to/pipeline/folder/examples/Genome_annotation/cDNA_sequences.fasta \
-   --queryprot /path/to/pipeline/folder/examples/Genome_annotation/protein_sequences.fasta \
-   --queryexon /path/to/pipeline/folder/examples/Genome_annotation/exon_sequences.fasta \
+   --querycDNA examples/Genome_annotation/cDNA_sequences.fasta \
+   --queryprot examples/Genome_annotation/protein_sequences.fasta \
+   --queryexon examples/Genome_annotation/exon_sequences.fasta \
    --spsrepeatmasker primates \
    --spsaugustus human \
    --outdir /path/to/output/folder/ \
-   --flanking /path/to/pipeline/folder/examples/Genome_annotation/flanking_regions.fasta \
+   --flanking examples/Genome_annotation/flanking_regions.fasta \
    --threads your_threads
 
    
@@ -382,7 +382,7 @@ showing which reference gene is most similar.
 
 usage: identify_pred2ref.py [-h] --subject SUBJECT --query QUERY --typeseq_query TYPESEQ_QUERY
                             --typeseq_subject TYPESEQ_SUBJECT --namegenome NAMEGENOME --outdir
-                            OUTDIR [--threads THREADS]
+                            OUTDIR
 
 AnnCX feature identify_pred2ref to identify predicted genes
 
@@ -454,29 +454,17 @@ options:
                         
   			Example: --gapextend 2
   			
-  --threads THREADS     
-  			(OPTIONAL) Number of threads that can be used to run this feature. 
-  			Example on how to calculate the number of threads in your computer:
-  			
-  			$ lscpu | grep -E '^Thread|^Core|^Socket|^CPU\('
-				CPU(s):              8   ## your number of threads
-				Thread(s) per core:  2
-				Core(s) per socket:  4
-				Socket(s):           1
-
-  			Example: --threads 8
 
    
    Example using the example data provided in the repository:
    
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/identify_pred2ref.py \
-   --subject /path/to/pipeline/folder/examples/Genome_annotation/cDNA_sequences.fasta \
-   --query /path/to/pipeline/folder/examples/Genome_annotation/cDNA_sequences.fasta \
+   --subject examples/Genome_annotation/cDNA_sequences.fasta \
+   --query examples/Genome_annotation/cDNA_sequences.fasta \
    --typeseq_query cDNA \
    --typeseq_subject cDNA \
    --namegenome Macaca_mulatta \
    --outdir /path/to/output/folder \
-   --threads your_threads
 
 
    <u>3. Interpretation of output files from running identify_pred2ref:</u>
@@ -579,9 +567,9 @@ options:
    Example using the example data provided in the repository:
    
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/identify_rearrangements.py \
-   --subject /path/to/pipeline/folder/examples/Genome_annotation/exon_sequences.fasta \
-   --query /path/to/pipeline/folder/examples/Genome_annotation/exon_sequences.fasta \
-   --namegenes /path/to/pipeline/folder/examples/Identify_rearrangements/gene_names.txt
+   --subject examples/Genome_annotation/exon_sequences.fasta \
+   --query examples/Genome_annotation/exon_sequences.fasta \
+   --namegenes examples/Identify_rearrangements/gene_names.txt
    --namegenome Macaca_mulatta \
    --outdir /path/to/output/folder \
    --threads your_threads
@@ -626,7 +614,7 @@ to/output/AnnCX_GeneNames/1_extract_ROI/7_extracted_roi_raw)*
 
 
 usage: annotation2fasta.py [-h] --annotation ANNOTATION --genome GENOME --namegenome NAMEGENOME
-                           --namegenes NAMEGENES --outdir OUTDIR
+                           --nameproject NAMEPROJECT --outdir OUTDIR
 
 AnnCX feature annotate2fasta to convert annotations (GFF3) to genomic sequences (FASTA)
 
@@ -662,7 +650,7 @@ options:
                         Name of the project. 
                         Used to label the output files.
                         
-                        Example: --namegenes NKG2
+                        Example: --nameproject extract_annotation_NKG2
                         
   --outdir OUTDIR       
   			Directory to save the output files. 
@@ -676,10 +664,10 @@ options:
    Example using the example data provided in the repository:
 
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/annotation2fasta.py \
-   --annotation /path/to/pipeline/folder/examples/annotate2fasta \
-   --genome /path/to/pipeline/folder/examples/genome \
-   --namegenome Macaca_mulatta_genomic_region \
-   --namegenes NKG2 \
+   --annotation examples/annotate2fasta \
+   --genome examples/genome \
+   --namegenome Macaca_mulatta \
+   --nameproject extract_annotation_NKG2 \
    --outdir /path/to/output/folder
 
 
