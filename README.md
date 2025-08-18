@@ -157,8 +157,8 @@ This feature produces one heatmap plot (SVG) per gene predicted in an annotated 
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/annotation2fasta.py \
    --annotation /path/to/pipeline/folder/examples/annotate2fasta \
    --genome /path/to/pipeline/folder/examples/genome \
-   --namegenome Macaca_mulatta_genomic_region \
-   --namegenes NKG2 \
+   --namegenome Macaca_mulatta \
+   --nameproject extract_annotation_NKG2 \
    --outdir /path/to/output/folder
    ```
 <br>

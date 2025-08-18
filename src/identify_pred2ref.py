@@ -35,7 +35,6 @@ def main():
     parser.add_argument('--outdir', type=check_dir_path, required=True, help='Directory to save the output files. Example: --outdir /path/to/output') # Directory
     parser.add_argument('--gapopen', default=1, type=int, help='(OPTIONAL) Number to run --gapopen open_penalty argument in BLASTN (Default = 1). Example: --gapopen 2') # Int
     parser.add_argument('--gapextend', default=1, type=int, help='(OPTIONAL) Number to run --gapextend extend_penalty argument in BLASTN (Default = 1). Example: --gapextend 2') # Int
-    parser.add_argument('--threads', default=-1, type=int, help='(OPTIONAL) Number of threads that can be used to run this feature. Example: --threads 3') # Int
     
     args = parser.parse_args()
 
@@ -53,8 +52,7 @@ def main():
                                     args.typeseq_subject,
                                     args.namegenome,
                                     args.gapopen,
-                                    args.gapextend,
-                                    args.threads)
+                                    args.gapextend)
     
     print ("2. Make heatmaps")
     blastn_heatmaps_dir = create_out_dir(output_dir, 'Heatmaps')
