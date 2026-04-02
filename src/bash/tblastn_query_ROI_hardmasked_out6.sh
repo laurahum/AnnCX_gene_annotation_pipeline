@@ -27,7 +27,7 @@
 # Notes: 
 # - Ensure that TBLASTN is installed and accessible in the current environment
 # - TBLASTN output format is set to outfmt 6 with specific fields:
-# "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand"
+# "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand qcovs"
 
 
 tblastn_run(){
@@ -42,7 +42,7 @@ tblastn_run(){
         echo "$genome"
     
         # Prepare the tblastn command
-        local cmd="tblastn -db \"$makeblastdb_dir/${genome}\" -query \"$query_dir\" -outfmt \"6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand\""
+        local cmd="tblastn -db \"$makeblastdb_dir/${genome}\" -query \"$query_dir\" -outfmt \"6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore sstrand qcovs\""
         
         # Add threads option if specified
         if [[ "$threads" != "false" && "$threads" =~ ^[0-9]+$ ]]; then

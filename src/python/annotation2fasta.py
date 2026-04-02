@@ -166,7 +166,7 @@ def populate_annotation (df_by_gene, genes, List_of_annotation):
             List_of_annotation[dic]['intron']['end'].append(start_exon[i+1]-1)
             List_of_annotation[dic]['intron']['strand'].append(strand_exon)
             print(f"Extracted {genes[dic]} for the intron annotation, start = {end_exon[i]+1}, end = {start_exon[i+1]-1}, strand = {strand_exon}")
-            
+               
 
 # 2. Populate List_of_fasta
 # Populate List_of_fasta using pyfastx      
@@ -269,9 +269,9 @@ def populate_fasta (List_of_annotation, List_of_fasta, ROI_fasta, ROI_entry_name
                     start = start_list[i]
                     end = end_list[i]
                     strand = strand_list[i]
-                
+               
                     fasta_seq = ROI_fasta.fetch(ROI_entry_name, (start,end), strand = strand)
-                    
+                   
                     List_of_fasta[each_gene][each_type].append(fasta_seq)
                     print(f"Extracted {genes[each_gene]} for the fasta sequence of {each_type}_{i}")
                 
@@ -470,8 +470,8 @@ def annotation_to_fasta (each_genome_name, annotation_path, List_of_output_dir, 
     # Order the exons and CDS by start position
     for i in range(len(pos_gene)):
         # Convert start and end positions to int
-        df_by_gene[i].loc[:,3] = df_by_gene[i][3].astype(int)
-        df_by_gene[i].loc[:,4] = df_by_gene[i][4].astype(int)
+        df_by_gene[i][3] = pd.to_numeric(df_by_gene[i][3], errors='coerce').astype('Int64')
+        df_by_gene[i][4] = pd.to_numeric(df_by_gene[i][4], errors='coerce').astype('Int64')
         # Separate exons and CDS 
         exons = df_by_gene[i][df_by_gene[i][2] == 'exon']
         cds = df_by_gene[i][df_by_gene[i][2] == 'CDS']
@@ -480,6 +480,7 @@ def annotation_to_fasta (each_genome_name, annotation_path, List_of_output_dir, 
         cds_sorted = cds.sort_values(by=3, ascending=False)
         # Combine other rows, exons, and CDS
         other_rows = df_by_gene[i][~df_by_gene[i][2].isin(['exon', 'CDS'])]
+        df_sorted = pd.concat([other_rows, cds_sorted]) 
         df_sorted = pd.concat([other_rows, exons_sorted, cds_sorted])
         # Substitute df for sorted df
         df_by_gene[i] = df_sorted
@@ -550,7 +551,10 @@ def get_fasta_sequences_annotation(genome_file, gene_to_annotate, input_dir_ROI,
     genome_list = get_list_genome(genome_file)
 
     ## Loop over the files and run functions
-    input_dir_ROI_list = [file for file in os.listdir(input_dir_ROI) if file.endswith('.fasta') and not file.endswith('fasta.fxi')]
+    fasta_patterns = ['.fasta', '.fa', '.fas', '.fna', '.ffn', '.faa', '.frn']
+    input_dir_ROI_list = [f for f in os.listdir(input_dir_ROI) 
+                      if any(f.lower().endswith(p) for p in fasta_patterns) 
+                      and not f.endswith('fasta.fxi')]
     input_dir_annotation_list = os.listdir(input_dir_annotation)
 
     # Loop over each genome annotation file
@@ -588,3 +592,11 @@ def get_fasta_sequences_annotation(genome_file, gene_to_annotate, input_dir_ROI,
             print(f"Deleted index file: {fxi_file}")
         else:
             print(f"Index file not found: {fxi_file}")
+
+
+genome_file='/home/lahumada/Desktop/AnnCX_gene_annotation_pipeline/examples/annotate2fasta/TXT/txt_genome.txt'
+gene_to_annotate='annotation2fasta_test'
+input_dir_ROI='/home/lahumada/Desktop/AnnCX_gene_annotation_pipeline/examples/genomic_sequences/genome'
+input_dir_annotation='/home/lahumada/Desktop/AnnCX_gene_annotation_pipeline/examples/annotate2fasta/GFF3'
+output_dir='/home/lahumada/Desktop/AnnCX_gene_annotation_pipeline/testing/output_revision/AnnCX_NKG2'
+get_fasta_sequences_annotation(genome_file, gene_to_annotate, input_dir_ROI, input_dir_annotation, output_dir)

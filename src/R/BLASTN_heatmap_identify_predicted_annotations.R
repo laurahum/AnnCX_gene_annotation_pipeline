@@ -26,7 +26,8 @@ library(magrittr)
 #'   - Red indicates the lowest rank (worst match)
 #' 
 #' @param File_input_blast (str): File path blastn output file.
-#' @param Dir_output (str): Directory path to save SVG heatmap file
+#' @param Dir_output_heatmaps (str): Directory path to save SVG heatmap file
+#' @param Dir_output_report (str): Directory path to save TXT report file
 #' @param genome_name (str) Name of the genome being processed (Example: 'Macaca_mulatta')
 #' @param gene_level_query (str) Gene level descriptor for the query (predicted genes) (Example: cDNA)
 #' @param gene_level_subject (str) Gene level descriptor for the subject (reference genes) (Example: cDNA)
@@ -37,10 +38,12 @@ library(magrittr)
 #'   - V1 = Annotation of prediction (query)
 #'   - V2 = Annotation of reference (subject)
 #'   - V3 = Percentage of identity from running blastn: query V1 vs subject V2
+#'   - V6 = gapopen
 #'   - V12 = Bitscore
 #'   - V13 = qcovs
 # 3. Compute rankings and scores to identify best matches.
 # 4. Generate and save heatmap as SVG
+# 5. Generate and save report as TXT
 #' @return
 #' Invisibly returns NULL. The main output is the saved SVG heatmap file.
 #'
@@ -52,42 +55,43 @@ library(magrittr)
 #'
 #' @examples
 #' \dontrun{
-#' BLASTN_heatmaps("blast_output.txt", "output_directory/", "Homo_sapiens", 
-#'                 "predicted_gene", "reference_gene")
+#' BLASTN_heatmaps("blast_output.txt", "output_directory_heatmaps/", "output_directory_report/", "Homo_sapiens", 
+#'                 "cDNA", "cDNA")
 #' }
-BLASTN_heatmaps <- function(File_input_blast, Dir_output, genome_name, gene_level_query, gene_level_subject){
+BLASTN_heatmaps <- function(File_input_blast, Dir_output_heatmaps, Dir_output_report, genome_name, gene_level_query, gene_level_subject){
   
   #### Load the dataframe output from blastn
   df = read.delim(File_input_blast, header = FALSE, stringsAsFactors = FALSE)
-
+  
   #### Make a subset
   # V1 = Annotation of prediction
   # V2 = Annotation of reference
   # V3 = Percentage of identity from running blastn: query V1 vs subject V2
+  # V6 = gapopen
   # V12 = Bitscore
   # V13 = qcovs
   df_subset_raw = df[,c(1:3, 6, 12, 13)]
   df_subset_raw$original_order <- seq_len(nrow(df_subset_raw))
-
+  
   # For the rows with the same query and subject, only keep the alignment with max bitscore
   df_subset <- df_subset_raw %>%
     arrange(desc(V3), V6, desc(V12), original_order) %>%
     distinct(V1, V2, .keep_all = TRUE)
-
+  
   # Arrange rows in order
   df_subset <- df_subset %>%
     arrange(original_order)
   
   # Get only the second decimal place, otherwise it doesn't fit into the squares in the heatmap
   df_subset$V3 = round(df_subset$V3, 2)
-
+  
   #### Function to make heatmap
   # Make a plot for each genome and save it in File_output directory
   heatmap_plotting = function(species, dataframe, best_matches) {
     # Calculate the number of rows and columns
     n_rows <- length(unique(dataframe$V2))
     n_cols <- length(unique(dataframe$V1))
-  
+    
     # Make the plot
     heatmap_plot <- ggplot(dataframe, aes(x = V1, y = V2)) +
       geom_tile(aes(fill = rank), colour = "black") +
@@ -102,7 +106,7 @@ BLASTN_heatmaps <- function(File_input_blast, Dir_output, genome_name, gene_leve
       geom_text(aes(label = round(V3,2))) +
       geom_tile(data = best_matches, aes(x = V1, y = V2), 
                 fill = "transparent", colour = "black", size = 1)
-
+    
     # Add the theme formatting
     base_size <- 9
     heatmap_plot <- heatmap_plot + theme_bw() + 
@@ -125,18 +129,18 @@ BLASTN_heatmaps <- function(File_input_blast, Dir_output, genome_name, gene_leve
                                        hjust = 1,
                                        vjust = 1,
                                        colour = "grey50"))
-  
+    
     # Return the plot
     return(heatmap_plot)
   }
-
+  
   # Function to get the row index of the max raw scores per match
   get_max_scores = function(dataframe) {
     dataframe[, score := V3 + V13/100 - V6/max(V6) + V12/max(V12)]
     best_matches = dataframe[, .SD[score == max(score)], by = V1]
     return(best_matches)
   }
-
+  
   # Transform the dataframe into data.table format
   df_data_table = data.table(V1 = df_subset[,1], V2 = df_subset[,2], 
                              V3 = df_subset[,3], V6 = df_subset[,4], 
@@ -150,7 +154,7 @@ BLASTN_heatmaps <- function(File_input_blast, Dir_output, genome_name, gene_leve
   
   # Create file directory
   File_name = paste(genome_name, "_identify_pred2ref.svg", sep = "")
-  File_output = paste(Dir_output, File_name, sep = "/")
+  File_output = paste(Dir_output_heatmaps, File_name, sep = "/")
   
   # Open svg to save the plot
   svg(filename = File_output)
@@ -161,4 +165,20 @@ BLASTN_heatmaps <- function(File_input_blast, Dir_output, genome_name, gene_leve
   
   # Close the plotting window to finish saving the plot
   dev.off()
+  
+  ##########################
+  # Generate genotype report
+  best_out_file <- file.path(
+    Dir_output_report,
+    paste0(genome_name, "_identify_pred2ref_best_matches.txt")
+  )
+  
+  best_matches_to_write <- best_matches[, .(query = V1, match = V2, pident = V3, gapscore = V6, bitscore = V12, qcovs = V13, score = score)]
+  
+  fwrite(
+    best_matches_to_write,
+    file = best_out_file,
+    sep = "\t",
+    col.names = FALSE
+  )
 }

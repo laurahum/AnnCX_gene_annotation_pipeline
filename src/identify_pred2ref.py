@@ -40,7 +40,7 @@ def main():
 
     # Make base output directory 
     output_dir_arg = os.path.abspath(args.outdir) # get absolute path
-    output_dir = create_out_dir(output_dir_arg, 'Identify_pred2ref', path=True)
+    output_dir = create_out_dir(output_dir_arg, f'Identify_pred2ref_{args.namegenome}', path=True)
     blastn_dir = create_out_dir(output_dir, 'BLASTN_output')
 
     print ("1. Run BLASTN")
@@ -55,12 +55,15 @@ def main():
                                     args.gapextend)
     
     print ("2. Make heatmaps")
+    print ("3. Make report")
     blastn_heatmaps_dir = create_out_dir(output_dir, 'Heatmaps')
+    blastn_report_dir = create_out_dir(output_dir, 'Report')
     blast_file_path = blastn_output.strip()    
     
     run_R_script('BLASTN_heatmap_identify_predicted_annotations.R', 'BLASTN_heatmaps',
                  str(blast_file_path),
                  str(blastn_heatmaps_dir),
+                 str(blastn_report_dir),
                  args.namegenome,
                  args.typeseq_query,
                  args.typeseq_subject)

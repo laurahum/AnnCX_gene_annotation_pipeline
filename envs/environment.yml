@@ -7,10 +7,12 @@ dependencies:
   - repeatmasker=4.1.5
   - gmap
   - blast
-  - augustus
   - wise2
   - exonerate
+  - augustus
   - evidencemodeler
+  - minimap2
+  - miniprot
   - artemis
   - bedtools
   - pyfastx

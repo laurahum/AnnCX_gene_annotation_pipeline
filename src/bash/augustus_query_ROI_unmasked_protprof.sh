@@ -52,7 +52,7 @@ augustus_run(){
     	--proteinprofile="$proteinprofile" \
     	--softmasking=0	\
     	--gff3=on  \
-    	--species="$species_arg_augustus" > "$output_dir/${genome}_ROI_${gene_to_annotate}_protprof_augustus"
+    	--species="$species_arg_augustus" > "$output_dir/${genome}_ROI_${gene_to_annotate}_protprof_augustus.gff3"
 	
     done < "$single_contig_list"
 }

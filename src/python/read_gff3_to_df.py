@@ -15,7 +15,11 @@ import pandas as pd
 
 # Function to read the gff3 file and return a pandas dataframe
 def read_gff3(file_path):
-    '''Function to read the gff3 file and return a pandas dataframe'''
+    '''
+    Function to read a gff3 file and return a pandas dataframe
+    Arg: - file_path: PATH to GFF3 file
+    Return: pandas dataframe
+    '''
     data = []
     with open(file_path, 'r') as file:
         for line in file:

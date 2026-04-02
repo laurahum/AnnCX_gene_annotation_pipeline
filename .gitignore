@@ -1,0 +1,31 @@
+# Bytecode / Compiled code
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Log files
+*.log
+
+# Data files
+testing
+
+# OS generated files # Thumbnail cache files
+._*
+*.DS_Store  # Mac OS
+
+#R history data
+.Rhistory
+.RData
+
+# Temp files
+*~
+\#*\#
+*.swp
+.dribble*

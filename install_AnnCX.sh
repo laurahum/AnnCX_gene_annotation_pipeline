@@ -8,9 +8,15 @@ PYTHON_PRED2REF_SCRIPT="${REPO_DIR}/src/identify_pred2ref.py"
 PYTHON_REARRANGEMENT_SCRIPT="${REPO_DIR}/src/identify_rearrangements.py"
 PYTHON_ANNOTATION2FASTA_SCRIPT="${REPO_DIR}/src/annotation2fasta.py"
 
+
+# Install mamba if needed
+if ! command -v mamba &> /dev/null; then
+    conda install mamba -n base -c conda-forge -y
+fi
+
 # Step 1: Create Conda environment from YAML file
 echo "Creating Conda environment from ${ENV_YML_FILE}..."
-conda env create -f "${ENV_YML_FILE}" || {
+mamba env create -f "${ENV_YML_FILE}" -y || {
     echo "Error: Failed to create Conda environment from ${ENV_YML_FILE}."
     exit 1
 }

@@ -6,320 +6,224 @@ Created on Mon May 16 22:50:57 2022
 @author: lahumada
 """
 
+'''
+This script will filter the BLAST results of aligning query prot/cDNA vs ROI hardmasked FASTA
 
-## This script will filter the BLAST results of aligning query prot/cDNA vs ROI hardmasked FASTA
+Since BLAST does not produce gene model annotations, each annotation entry in the BLAST results is considered
+for filtering and refered to as 'genes' throughout the script.
+BLAST aligns several annotation entries on the same region, with overlapping coordinates and different score values, 
+and the objective of this filtering step is to leave only the best annotation entries.
 
-## Since BLAST does not produce gene model annotations, each annotation entry in the BLAST results is considered
-## for filtering and refered to as 'genes' throughout the script.
-## BLAST aligns several annotation entries on the same region, with overlapping coordinates and different score values, 
-## and the objective of this filtering step is to leave only the best annotation entries.
+Filter BLAST outfmt 6 results converted to GFF3 using a compound score:
 
-## Logic: If the ranges from two annotation entries overlap, filter lower bitscore.
-##  -> If both ranges have the same bitscore, filter by identity
-##      -> If both ranges have the same bitscore and identity, filter one at random
+    compound_score = (pident/100 * qcovs/100 * bitscore_norm) / (1 + normalized_gapopen)
 
-## Main function: filter_blast_one_map_per_region(input_dir, output_dir)
+where:
+    pident            = percentage identity (%)
+    qcovs             = query coverage per subject (%)
+    bitscore_norm     = bitscore / bitscore_scale
+    normalized_gapopen = gapopen / alignment_length
+
+Logic: for overlapping BLAST hits on the same target region, keep the hit with
+the highest compound score. If there is a tie, pick one at random (fixed seed).
+
+Main function: filter_blast_one_map_per_region(input_dir, output_dir)
+'''
+
 
 import os
-import numpy as np
 import re
+import numpy as np
+import pandas as pd
 from .ranges_overlap import find_ranges_overlap # Function to determine whether two ranges overlap
 from .read_gff3_to_df import read_gff3 # Custom function to read gff3
 
 
-
-## Return index of genes to be filtered out
-def genes_same_region (input_file, list_gene_start, list_gene_end, list_gene_names, list_identities, list_bitscores):
-    """Check whether a gene range is contained in another 
-    gene range: Compares each gene alignment range to the rest. 
-    If the gene range checked is within another gene range 
-    the function filters the gene with lower bitscore.
-    If the bitscores are exactly the same then the hit with
-    lower identity is filtered out.
-    If both bitscores and identity values are the same, filter
-    one gene at random.
-    
-    Returns index of genes to be filtered out.
-    
-    Arguments:
-    input_file = dataframe # full dataframe
-    list_gene_start = list(int) # start of gene alignment
-    list_gene_end = list(int) # end of gene alignment
-    list_gene_names = list(str) # name of each gene
-    list_identities = list(int) # identities of each gene
-    list_bitscores = list(int) # bitscores of each gene
-    
-    Prints the reason for the filtering of each annotation entry
+def calculate_blast_compound_score(attributes,
+                                   bitscore_scale=100.0):
     """
+    Calculate BLAST compound score from the attributes column of a BLAST GFF3 entry.
+    Expected attributes, e.g.: ID=...;Name=...;pident=90.233;length=215;bitscore=281;qcovs=97.5;gapopen=0
+
+    compound_score = (pident * qcovs * bitscore_norm) / (1 + normalized_gapopen)
+
+    Arguments
+        - attributes (str): GFF3 attributes field for a BLAST feature.
+    	- bitscore_scale (float): Divisor to normalize bitscore (typical bitscores ~100–500; 100 is reasonable).
+
+    Returns (float): Compound score for this BLAST hit.
+    """
+
+    # Helper to pull float/int from attributes
+    def get_attr_float(key):
+        m = re.search(rf"{key}=([^;]+)", attributes)
+        return float(m.group(1))
+
+    def get_attr_int(key):
+        m = re.search(rf"{key}=([^;]+)", attributes)
+        return int(m.group(1))
+
+    pident = get_attr_float("pident")      # % identity
+    qcovs = get_attr_float("qcovs")        # % query coverage per subject
+    bitscore = get_attr_float("bitscore")  # BLAST bitscore
+    gapopen = get_attr_int("gapopen")      # number of gap openings
+    alen = get_attr_int("length")      # alignment length
+
+    bitscore_norm = bitscore / bitscore_scale if bitscore_scale > 0 else bitscore
+    normalized_gapopen = gapopen / (1 + alen)
+
+    compound_score = (pident/100 * qcovs/100 * bitscore_norm) / (1.0 + normalized_gapopen)
+
+    return compound_score
+
+
+def genes_same_region(blast_hits, list_start, list_end, list_names, list_scores):
+    """
+    Determine which BLAST hits to filter out when they overlap on the target.
+    Keep ONLY highest compound score per overlap cluster. Ties broken randomly.
+    """
+    list_to_filter = []
+    is_keeper = [True] * len(blast_hits)
+    rng = np.random.default_rng(seed=42)
     
-    ###### Genes to be filtered
-    # Two kind of genes to be filtered out:
-    # 1. List for genes that overlap and have smaller bitscore
-    list_gene_same_region = []
-    
-    # 2. List for genes that overlap and have the same bitscore but have lower identity
-    list_gene_same_bitscore = []
-    
-    # 3. List for genes that overlap, same bitscore, same identity
-    list_gene_same_bitscore_identity = []
-    
-    
-    ###### Check the ranges:
-    for i in range(len(input_file)):
-        # Range of gene alignment to be checked
-        range_gene_1 = range(list_gene_start[i],list_gene_end[i]+1)
+    for i in range(len(blast_hits)):
+        if not is_keeper[i]:
+            continue
+            
+        range_i = range(list_start[i], list_end[i] + 1)
+        score_i = list_scores[i]
         
-        for j in range(len(input_file)):
-            
-            if i != j: # Prevents comparing one gene to itself
-            # Range of gene alignment to be checked
-                range_gene_2  = range(list_gene_start[j],list_gene_end[j]+1)
-            
-                # Check if gene [i] is within gene [j]
-                if find_ranges_overlap(range_gene_1, range_gene_2):
-                    
-                    # Get identities for genes [i] and [j]
-                    identity_gene_1 = list_identities[i]
-                    identity_gene_2 = list_identities[j]
-                    
-                    # Get bitscores for genes [i] and [j]
-                    bitscore_gene_1 = list_bitscores[i]
-                    bitscore_gene_2 = list_bitscores[j]
-                    
-                    # Get gene name for genes [i] and [j]
-                    gene_name_1 = list_gene_names[i]
-                    gene_name_2 = list_gene_names[j]
+        for j in range(len(blast_hits)):
+            if i == j or not is_keeper[j]:
+                continue
                 
+            range_j = range(list_start[j], list_end[j] + 1)
             
-                    # 1. List for genes that overlap and have smaller bitscore
-                    # If the bitscore of gene [i] is higher, filter gene [j]
-                    if bitscore_gene_1 > bitscore_gene_2:
-                        list_gene_same_region.append(j)
-                        print("1_Gene_" + gene_name_2 + "_index_" + str(j) + "_overlaps_with_" + gene_name_1 + "_index_" + str(i) + "_FILTERED")
-                        
-                    elif bitscore_gene_1 < bitscore_gene_2:
-                        list_gene_same_region.append(i)
-                        print("2_Gene_" + gene_name_1 + "_index_" + str(i) + "_overlaps_with_" + gene_name_2 + "_index_" + str(j) + "_FILTERED")
+            if find_ranges_overlap(range_i, range_j):
+                score_j = list_scores[j]
+                
+                if score_i > score_j:
+                    list_to_filter.append(j)
+                    is_keeper[j] = False
+                    print(f"BLAST_filter_{list_names[j]}_index_{j}_overlaps_{list_names[i]}_index_{i}_scores_{score_j:.3f}_vs_{score_i:.3f}")
                     
-                    # 2. List for genes that overlap because the range is 
-                    # exactly the same to other gene but have lower identity
-                    else:
-                        if identity_gene_1 > identity_gene_2:
-                            list_gene_same_bitscore.append(j)
-                            print("3_Gene_" + gene_name_2 + "_index_" + str(j) + "_same_bitscore_as_" + gene_name_1 + "_index_" + str(i) + "_FILTERED")
-                            
-                        elif identity_gene_1 < identity_gene_2:
-                            list_gene_same_bitscore.append(i)
-                            print("4_Gene_" + gene_name_1 + "_index_" + str(i) + "_same_bitscore_as_" + gene_name_2 + "_index_" + str(j) + "_FILTERED")
-                            
-                        else:
-                            if ((any(i in sublist for sublist in list_gene_same_bitscore_identity)) == False):
-                                list_gene_same_bitscore_identity.append([i,j])
-                                print("5_Gene_" + gene_name_1 + "_index_" + str(i) + "_same_bitscore_and_identity_as_" + gene_name_2 + "_index_" + str(j))
-
-                            
-                                                      
-    ###### Return list of unique genes to be filtered    
-    # Ony list_gene_same_region has values
-    if (len(list_gene_same_region) > 0) and (len(list_gene_same_bitscore) == 0) and (len(list_gene_same_bitscore_identity) == 0):
-        unique_genes_1 = np.unique(list_gene_same_region)
-        
-        # Control: print what genes will be filtered
-        for i in unique_genes_1:
-            index_gene = i
-            name_gene = list_gene_names[index_gene]
-            print("A_Filtered_gene_" + name_gene + "_index_" + str(index_gene))
-        
-        return(unique_genes_1)
+                elif score_i < score_j:
+                    list_to_filter.append(i)
+                    is_keeper[i] = False
+                    print(f"BLAST_filter_{list_names[i]}_index_{i}_overlaps_{list_names[j]}_index_{j}_scores_{score_i:.3f}_vs_{score_j:.3f}")
+                    break
+                    
+                else:  # Tie
+                    winner_idx = rng.choice([i, j], size=1)[0]
+                    loser_idx = j if winner_idx == i else i
+                    list_to_filter.append(loser_idx)
+                    is_keeper[loser_idx] = False
+                    print(f"BLAST_filter_tie_{list_names[loser_idx]}_index_{loser_idx}_loser_to_{list_names[winner_idx]}_index_{winner_idx}_score_{score_i:.3f}")
+                    if loser_idx == i:
+                        break
     
-    # Both list_gene_same_region and list_gene_same_bitscore have values
-    if (len(list_gene_same_region) > 0) and (len(list_gene_same_bitscore) > 0) and (len(list_gene_same_bitscore_identity) == 0):
-        unique_genes_1 = np.unique(list_gene_same_region)
-        unique_genes_2 = np.unique(list_gene_same_bitscore)
-        
-        # Merge both lists
-        gene_index_to_be_filtered = list(unique_genes_1) + list(unique_genes_2)
-        unique_genes_filter = np.unique(gene_index_to_be_filtered)
-        
-        # Control: print what genes will be filtered
-        for i in unique_genes_filter:
-            index_gene = i
-            name_gene = list_gene_names[index_gene]
-            print("B_Filtered_gene_" + name_gene + "_index_" + str(index_gene))
-        
-        return(unique_genes_filter)
+    unique_to_filter = np.unique(list_to_filter)
     
-    # Both list_gene_same_region and list_gene_same_bitscore_identity have values
-    if (len(list_gene_same_region) > 0) and (len(list_gene_same_bitscore) == 0) and (len(list_gene_same_bitscore_identity) > 0):
-        unique_genes_1 = np.unique(list_gene_same_region)
-        
-        # Filter random element of each list in list_gene_same_bitscore_identity
-        filter_values = []
-        for i in range(len(list_gene_same_bitscore_identity)):
-            # Create a new random number generator, with a set seed for reproducibility
-            rng = np.random.default_rng(seed=42)
-            # Randomly select an index
-            index_random = rng.choice(list_gene_same_bitscore_identity[i], size=1)[0]
-            filter_values.append(index_random)
-            
-        unique_genes_3 = np.unique(filter_values)
-        
-        # Merge both lists
-        gene_index_to_be_filtered = list(unique_genes_1) + list(unique_genes_3)
-        unique_genes_filter = np.unique(gene_index_to_be_filtered)
-        
-        # Control: print what genes will be filtered
-        for i in unique_genes_filter:
-            index_gene = i
-            name_gene = list_gene_names[index_gene]
-            print("C_Filtered_gene_" + name_gene + "_index_" + str(index_gene))
-        
-        return(unique_genes_filter)
+    if len(unique_to_filter) == 0:
+        print("No overlapping BLAST hits - keeping all")
+    else:
+        for i in unique_to_filter:
+            print(f"A_Filtered_gene_{list_names[i]}_index_{i}")
     
-    # All three have values
-    if (len(list_gene_same_region) > 0) and (len(list_gene_same_bitscore) > 0) and (len(list_gene_same_bitscore_identity) > 0):
-        unique_genes_1 = np.unique(list_gene_same_region)
-        unique_genes_2 = np.unique(list_gene_same_bitscore)
-        
-        # Filter random element of each list in list_gene_same_bitscore_identity
-        filter_values = []
-        for i in range(len(list_gene_same_bitscore_identity)):
-            # Create a new random number generator, with a set seed for reproducibility
-            rng = np.random.default_rng(seed=42)
-            # Randomly select an index
-            index_random = rng.choice(list_gene_same_bitscore_identity[i], size=1)[0]
-            filter_values.append(index_random)
-            
-        unique_genes_3 = np.unique(filter_values)
-        
-        # Merge all lists
-        gene_index_to_be_filtered = list(unique_genes_1) + list(unique_genes_2) + list(unique_genes_3)
-        unique_genes_filter = np.unique(gene_index_to_be_filtered)
-        
-        # Control: print what genes will be filtered
-        for i in unique_genes_filter:
-            index_gene = i
-            name_gene = list_gene_names[index_gene]
-            print("D_Filtered_gene_" + name_gene + "_index_" + str(index_gene))
-        
-        return(unique_genes_filter)
-   
+    return unique_to_filter
     
 
-## Function to filter genes in the input gff3 file (Filepath_input)
-## and save output filtered files (Filepath_output):
-def filter_genes_same_map_region (Filepath_input, Filepath_output):
-    '''Finds which genes are mapped to the same region and filters the ones
-    that have the lower bitscore/identity.
-    1. Load dataframe from Filepath_input
-    2. Format data
-        - Remove nan values
-        - Convert columns with gene range coordinates (3 and 4) from float to int
-    3. Get alignment result data for each annotation entry created by BLAST:
-        - Gene name
-        - Gene start 
-        - Gene end
-        - Gene bitscore
-        - Gene identity
-    4. gene_same_region() 
-        - Returns index of genes to be filtered out
-    5. Save the dataframes from all annotation entries excluding the filtered ones
-    '''
-    
-    # 1. Load input gff3 file to a dataframe
-    input_file = read_gff3(Filepath_input)
+def filter_genes_same_map_region(Filepath_input, Filepath_output):
+    """
+    Filter a single BLAST GFF3 file by compound score.
 
-    # If the annotation file read is empty, skip this genome
-    if input_file is None:
-        print (f"No data rows in {Filepath_input}. Skipping this file.")
-        return False 
+    Steps:
+      1. Load GFF3 into a DataFrame.
+      2. Select BLAST rows (e.g. type == 'BLASTCDS' or 'BLAST').
+      3. Compute compound score for each BLAST feature.
+      4. For overlapping hits on the same target, keep only the highest-scoring one.
+      5. Write filtered GFF3 to Filepath_output.
+    """
 
-    # 2. Format the gff3 dataframe
-    ##### - Fill nan values with 0
-    input_file = input_file.fillna(0)
-    
-    ##### - Convert column 3 and 4 from float to int
-    input_file.iloc[:,3] = input_file.iloc[:,3].astype(int)
-    input_file.iloc[:,4] = input_file.iloc[:,4].astype(int)
+    gff_df = read_gff3(Filepath_input)
 
-    ##### - Get the name and interval of each gene alignment
-    list_gene_names = []
-    list_gene_start = []
-    list_gene_end = []
-        
-    
-    for i in range(len(input_file)):
-        # Get start and end of the gene alignment
-        start_align = int(input_file.iloc[i,3])
-        end_align = int(input_file.iloc[i,4])
-        
-        list_gene_start.append(start_align)
-        list_gene_end.append(end_align)
-        
-        # Get each gene name
-        gene_name = input_file.iloc[i,0]
-        list_gene_names.append(gene_name)
-        
-    
-    ##### - Get the identity of each gene alignment
-    list_identities = []
-    
-    for i in range(len(input_file)):
-        last_column = input_file.iloc[i,-1]
-        pident_pattern = r'pident=(\d+(?:\.\d+)?)'
-        pident_match = re.search(pident_pattern, last_column)
-        pident_value = float(pident_match.group(1)) if pident_match else None
+    if gff_df is None or gff_df.empty:
+        print(f"No BLAST data in {os.path.basename(Filepath_input)}. Skipping this file.")
+        return False
 
-        list_identities.append(pident_value)
-    
-    
-    ##### - Get the bitscore of each gene alignment
-    list_bitscores = []
-   
-    for i in range(len(input_file)):
-        last_column = input_file.iloc[i,-1]
-        bitscore_pattern = r'bitscore=(\d+(?:\.\d+)?)'
-        bitscore_match = re.search(bitscore_pattern, last_column)
-        bitscore_value = float(bitscore_match.group(1)) if bitscore_match else None
-        
-        list_bitscores.append(bitscore_value)
+    # Ensure positions numeric
+    gff_df = gff_df.dropna()
+    gff_df[3] = pd.to_numeric(gff_df[3], errors='coerce').astype('Int64') # start
+    gff_df[4] = pd.to_numeric(gff_df[4], errors='coerce').astype('Int64') # end
 
+    gff_df = gff_df.reset_index(drop=True)
 
-    # 5. What genes are mapped to the same region?
-    # Call function 'index_same_region' and return gene indexes to be filtered
-    index_same_region = genes_same_region(input_file, list_gene_start, list_gene_end, list_gene_names, list_identities, list_bitscores)
-           
-    # 6. Drop index of genes to be filtered from the original dataframe
-    input_file_filtered = input_file.drop(index_same_region)
+    # Filter to BLAST features (adjust types if needed)
+    # Here assuming feature types in column 2 are 'BLASTCDS' / 'BLASTN' / 'BLAST'
+    blast_mask = gff_df.iloc[:, 2].str.contains("BLAST", case=False, na=False)
+    blast_hits = gff_df[blast_mask].reset_index(drop=True)
+
+    if len(blast_hits) == 0:
+        print(f"No BLAST features in {os.path.basename(Filepath_input)}. Skipping this file.")
+        return False
+
+    list_names = []
+    list_start = []
+    list_end = []
+    list_scores = []
+
+    for idx, row in blast_hits.iterrows():
+        start = int(row[3])
+        end = int(row[4])
+        attributes = str(row[8])
+
+        # Extract ID or Name for reporting
+        m_id = re.search(r"ID=([^;]+)", attributes)
+        name = m_id.group(1)
+
+        score = calculate_blast_compound_score(attributes)
+
+        list_names.append(name)
+        list_start.append(start)
+        list_end.append(end)
+        list_scores.append(score)
+
+    if len(list_scores) > 0:
+        print(f"BLAST compound scores in {os.path.basename(Filepath_input)}: "
+              f"min={min(list_scores):.3f} max={max(list_scores):.3f}")
+    
+        # Get original indices of blast_hits in gff_df
+        blast_indices = blast_hits.index.tolist()
+    
+        # Filter using blast_hits indices (0-M)
+        relative_indices_to_filter = genes_same_region(blast_hits, list_start, list_end, list_names, list_scores)
+    
+        # Map back to original gff_df indices
+        index_same_region = [blast_indices[idx] for idx in relative_indices_to_filter]
+    else:
+        index_same_region = []
+
+    # Drop index of genes to be filtered from the original dataframe
+    input_file_filtered = gff_df.drop(index_same_region)
      
-    # 7. Save filtered dataframe
+    # Save filtered dataframe
     input_file_filtered.to_csv(Filepath_output, sep='\t', index=False, header=False)
-
+    
     return True
 
 
-# Loop over all the input files
 def filter_blast_one_map_per_region(input_dir, output_dir):
-    '''Loop the filter_genes_same_map_region function over all the formatted BLAST result annotation files for each genome
-        - input_dir: Path to formatted-GFF BLAST result annotation files
-        - output_dir: Path to formatted-filtered-GFF BLAST result annotation files
-    '''
-    # Loop the function 'filter_genes_same_map_region()' over the input files  
+    """
+    Loop over BLAST GFF3 files and apply compound-score-based filtering.
+      - input_dir: path to BLAST GFF3 files
+      - output_dir: path to filtered BLAST GFF3 files
+    """
     for filename in os.listdir(input_dir):
-        # Get name for each input file and modify it for the output file names:
-        print(filename)
-        filtered_name = filename
-        filtered_name = filtered_name.rsplit('.', 1)[0] 
-        filtered_name = filtered_name + '_FILTERED.gff'
-    
-    
-        # Directory to each input and output file:
+        filtered_name = filename.rsplit('.', 1)[0] + '_FILTERED.gff3'
         Filepath_input = os.path.join(input_dir, filename)
         Filepath_output = os.path.join(output_dir, filtered_name)
-    
-        # Call function to process input files in order to filter genes and save
-        # output files:
-        if filter_genes_same_map_region (Filepath_input, Filepath_output):
+
+        if filter_genes_same_map_region(Filepath_input, Filepath_output):
             # The annotation file was correct and filtering was successful
             print(f"Saved {filtered_name}")
         else:

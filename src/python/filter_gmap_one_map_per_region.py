@@ -6,264 +6,245 @@ Created on Mon Sep  9 20:06:33 2024
 @author: lahumada
 """
 
+'''
+This script will filter the GMAP results of aligning query cDNA/exons vs ROI hardmasked FASTA
 
-## This script will filter the GMAP results of aligning query cDNA/exons vs ROI hardmasked FASTA
+Since GMAP produces gene model annotations, each gene model (labeled as 'gene' in the GFF3 files) is considered
+for filtering and refered to as 'genes' (which includes its associated features: mRNA, exon, CDS) throughout the script.
+GMAP aligns several gene model annotation entries on the same region, with overlapping coordinates and different score values, 
+and the objective of this filtering step is to leave only the best gene model annotation entries.
 
-## Since GMAP produces gene model annotations, each gene model (labeled as 'gene' in the GFF3 files) is considered
-## for filtering and refered to as 'genes' (which includes its associated features: mRNA, exon, CDS) throughout the script.
-## GMAP aligns several gene model annotation entries on the same region, with overlapping coordinates and different score values, 
-## and the objective of this filtering step is to leave only the best gene model annotation entries.
+Uses compound score: (identity/100 × coverage/100 × avg_exon_score/100) / (1 + normalized_indels)
+where:
+- avg_exon_score = mean(individual exon scores) # GMAP intrinsic scores for each individual exon
+- normalized_indels = indels /  (1 + align_len)
+- alig_len = matches + mismatches  # alignment length as GMAP calculates it to produce identity score
 
-## Logic: If the ranges from two gene model annotation entries overlap, filter lower identity.
-##  -> If both ranges have the same identity, filter one at random
+Logic: If gene models overlap, keep highest compound score. Ties broken randomly.
 
-## Main function: filter_gmap_one_map_per_region(input_dir, output_dir)
+
+Main function: filter_gmap_one_map_per_region(input_dir, output_dir)
+'''
 
 import os
 import sys
 import numpy as np
+import pandas as pd
 import re
 from .ranges_overlap import find_ranges_overlap # Function to determine whether two ranges overlap
 from .read_gff3_to_df import read_gff3 # Custom function to read gff3
 
 
 
-# Function to know what genes are mapped to the same region
-    # Check whether a gene range is contained in another gene range
-    # Function that returns genes to be filtered out
-def genes_same_region (gene_rows, list_gene_start, list_gene_end, list_gene_names, list_identities, pos_gene):
-    """Returns index of genes to be filtered out.
-    Compares each gene alignment range to the rest.
-    If the gene range checked is within another gene range 
-    the function filters the gene with lower identity.
-    If both identity values are the same, filter
-    one gene at random.
-
-    Arguments:
+def genes_same_region(gene_rows, list_gene_start, list_gene_end, list_gene_names, 
+                     list_compound_scores, pos_gene):
+    """Returns indices of gene models to filter out based on compound score.
+    If gene ranges overlap, keep ONLY model with highest compound score.
+    Ties broken randomly using fixed seed for reproducibility.
+        Arguments:
         gene_rows = dataframe # only gene rows from input_file
         list_gene_start = list(int) # start of gene alignment
         list_gene_end = list(int) # end of gene alignment
         list_gene_names = list(str) # name of each gene
-        list_identities = list(int) # identities of each gene
+        list_compound_scores = list(float) # compound scores of each gene
         pos_gene = list(int) # index of genes in gene_rows
         
-    Prints the reason for the filtering of each annotation entry
-    """
-
+    Prints the reason for filtering each annotation entry.
+    """    
     list_gene_same_region = []
-        
+    is_keeper = [True] * len(gene_rows)  # Track which genes are keepers
+    
     for i in range(len(gene_rows)):
-        # Range of gene alignment to be checked
-        range_gene_1 = range(list_gene_start[i],list_gene_end[i]+1)
+        if not is_keeper[i]:  # Skip if already marked for filtering
+            continue
             
-        for j in range(len(gene_rows)):
-            if i != j: # Prevents comparing one gene to itself
-            # Range of gene alignment to be checked
-                range_gene_2  = range(list_gene_start[j],list_gene_end[j]+1)
-                    
-                # Check if gene [i] is within gene [j]
-                if find_ranges_overlap(range_gene_1, range_gene_2):
-                    identity_gene_1 = list_identities[i]
-                    identity_gene_2 = list_identities[j]
-                    
-                    # If the identity of gene [i] is higher, filter gene [j]
-                    if identity_gene_1 > identity_gene_2:
-                        gene_pos_1 = pos_gene[j]
-                        gene_name_1 = list_gene_names[j]
-                        list_gene_same_region.append(gene_pos_1)
-                        print("Add_gene_" + gene_name_1 + "_index_" + str(gene_pos_1))
-                        
-                    # Else, filter gene [i]
-                    elif identity_gene_1 < identity_gene_2:
-                        gene_pos_2 = pos_gene[i]
-                        gene_name_2 = list_gene_names[i]
-                        list_gene_same_region.append(gene_pos_2)
-                        print("Add_gene_" + gene_name_2 + "_index_" + str(gene_pos_2))
-       
-                    else:
-                        # If both identities are the same
-                        # Create a new random number generator, with a set seed for reproducibility
-                        rng = np.random.default_rng(seed=42)
-                        # Randomly select an index
-                        index_random = rng.choice([i,j], size=1)[0]
-                        gene_pos_3 = pos_gene[index_random]
-                        gene_name_3 = list_gene_names[index_random]
-                        list_gene_same_region.append(gene_pos_3)
-                        print("Add_gene_" + gene_name_3 + "_index_" + str(gene_pos_3))
+        range_gene_1 = range(list_gene_start[i], list_gene_end[i]+1)
+        score_gene_1 = list_compound_scores[i]
         
-       
-    # Get list of unique genes to be filtered
+        for j in range(len(gene_rows)):
+            if i == j or not is_keeper[j]:  # Skip self and already-filtered genes
+                continue
+                
+            range_gene_2 = range(list_gene_start[j], list_gene_end[j]+1)
+            
+            if find_ranges_overlap(range_gene_1, range_gene_2):
+                score_gene_2 = list_compound_scores[j]
+                
+                if score_gene_1 > score_gene_2:
+                    # Gene i beats gene j -> filter j
+                    gene_pos_j = pos_gene[j]
+                    gene_name_j = list_gene_names[j]
+                    list_gene_same_region.append(gene_pos_j)
+                    is_keeper[j] = False
+                    print(f"Filter_gene_{gene_name_j}_index_{gene_pos_j}_score_{score_gene_2:.2f}_beaten_by_{list_gene_names[i]}")
+                    
+                elif score_gene_1 < score_gene_2:
+                    # Gene j beats gene i -> filter i, break out
+                    gene_pos_i = pos_gene[i]
+                    gene_name_i = list_gene_names[i]
+                    list_gene_same_region.append(gene_pos_i)
+                    is_keeper[i] = False
+                    print(f"Filter_gene_{gene_name_i}_index_{gene_pos_i}_score_{score_gene_1:.2f}_beaten_by_{list_gene_names[j]}")
+                    break  # i is filtered, no need to check more opponents
+                    
+                else:  # Tie
+                    rng = np.random.default_rng(seed=42)
+                    winner_idx = rng.choice([i, j], size=1)[0]
+                    loser_idx = j if winner_idx == i else i
+                    gene_pos_loser = pos_gene[loser_idx]
+                    gene_name_loser = list_gene_names[loser_idx]
+                    list_gene_same_region.append(gene_pos_loser)
+                    is_keeper[loser_idx] = False
+                    print(f"Filter_gene_{gene_name_loser}_index_{gene_pos_loser}_tie_score_{score_gene_1:.2f}_loser_to_{list_gene_names[winner_idx]}")
+                    if loser_idx == i:
+                        break  # i lost tie, no need to check more opponents
+    
     unique_genes = np.unique(list_gene_same_region)
     
-    # Control: print what genes will be filtered
     for i in unique_genes:
         index_gene = list(pos_gene).index(i)
         name_gene = list_gene_names[index_gene]
-        print("Filtered_gene_" + name_gene)
+        print(f"Filtered_gene_{name_gene}_index_{i}")
     
-    return(unique_genes)
+    if len(unique_genes) == 0:
+        print("No overlaps found - keeping all gene models")
+    
+    return unique_genes
 
 
-## Function to filter genes in the input gmap gff3 file (Filepath_gmap_gff3)
-## and save output filtered files (Filepath_filtered_gff3):
-def filter_genes_same_map_region (Filepath_input, Filepath_output):
-    '''Finds which genes are mapped to the same region and filters the ones
-    that have the lower identity.
-    1. Load dataframe from Filepath_input
-    2. Format data
-        - Remove nan values
-        - Convert columns with gene range (3 and 4) from float to int
-        - Reset index
-    3. Get gene alignment data
-        - Gene name
-        - Gene start
-        - Gene end
-        - Gene identity
-    4. Split dataframe annotation entries by gene model (gene + mRNA + exons + CDS)
-    5. gene_same_region() 
-        - Returns index of genes to be filtered out
-    6. Save the dataframes from the genes excluding the filtered genes
+def calculate_gmap_compound_score(mrna_attributes, exon_scores):
+    """Calculate compound score: (identity/100 × coverage/100 × avg_exon_score) / (1 + normalized_indels)"""
+    
+    # Parse mRNA attributes
+    identity_match = re.search(r'identity=(\d+(?:\.\d+)?)', mrna_attributes)
+    coverage_match = re.search(r'coverage=(\d+(?:\.\d+)?)', mrna_attributes)
+    indels_match = re.search(r'indels=(\d+)', mrna_attributes)
+    matches_match = re.search(r'matches=(\d+)', mrna_attributes)
+    mismatches_match = re.search(r'mismatches=(\d+)', mrna_attributes)
+    
+    # Identity and coverage
+    identity = float(identity_match.group(1))
+    coverage = float(coverage_match.group(1))
+    
+    # Calculate average exon score
+    avg_exon_score = np.mean(exon_scores)
+    
+    # Normalize indels by alignment length
+    indels = int(indels_match.group(1))
+    align_len = int(matches_match.group(1)) + int(mismatches_match.group(1))
+    normalized_indels = indels/(1 + align_len)
+    
+    # Compound score
+    compound_score = (identity/100 * coverage/100 * avg_exon_score/100) / (1 + normalized_indels)
+    
+    return compound_score
+
+def filter_genes_same_map_region(Filepath_input, Filepath_output):
+    '''Filters GMAP gene models by compound score when ranges overlap.
+    1. Load and format GFF3
+    2. Extract gene model data and calculate compound scores
+    3. Split by gene model (gene+mRNA+exons+CDS)
+    4. Filter overlapping models by compound score
+    5. Save non-overlapping gene models
     '''
-        
-    # 1. Load input gff3 file to a dataframe
+    
+    # 1. Load input GFF3
     input_file = read_gff3(Filepath_input)
-   
-    # If the annotation file read is empty, skip this genome
+    
     if input_file is None:
-        print (f"No data rows in {Filepath_input}. Skipping this file.")
-        return False 
+        print(f"No data rows in {Filepath_input}. Skipping this file.")
+        return False
 
-    # 2. Format the gff3 dataframe
-    ##### - Drop nan values in rows
+    # 2. Format data
     input_file = input_file.dropna()
-    
-    ##### - Convert column 3 and 4 from float to int
-    input_file.iloc[:,3] = input_file.iloc[:,3].astype(int)
-    input_file.iloc[:,4] = input_file.iloc[:,4].astype(int)    
-    
-    ##### - Reset index
-    input_file = input_file.reset_index()
-    original_index = input_file.loc[:,'index']
-    input_file = input_file.drop(columns=['index'])
-    
-    
-    # 3. Get data from the gene alignment 
-    ##### - Make a dataframe only with the rows containing the alignment for 'gene':
-    # Get the indices for the rows containing the word 'gene'
-    # Create a boolean mask to split later the dataframe
+    input_file[3] = pd.to_numeric(input_file[3], errors='coerce').astype('Int64')
+    input_file[4] = pd.to_numeric(input_file[4], errors='coerce').astype('Int64')
+    input_file = input_file.reset_index(drop=True)
+
+    # 3. Get gene model data
     mask_gene = input_file.iloc[:,2] == 'gene'
-    # Get the rows that have 'gene' in the second column
-    gene_rows = input_file[~mask_gene == False]
-    # Index of the dataframe containing just the genes
-    pos_gene = gene_rows.index
+    gene_rows = input_file[mask_gene]
+    pos_gene = gene_rows.index.tolist()
+    
+    if len(gene_rows) == 0:
+        print(f"No gene features in {os.path.basename(Filepath_input)}. Skipping.")
+        return False
 
-
-    ##### - Get the name and interval of each gene alignment
+    # Extract gene names, ranges, and calculate compound scores
     list_gene_names = []
     list_gene_start = []
     list_gene_end = []
+    list_compound_scores = []
     
-    info_column = gene_rows.iloc[:,-1]
-    
+    # Get mRNA data for identities
+    mask_mRNA = input_file.iloc[:,2] == 'mRNA'
+    mRNA_rows = input_file[mask_mRNA]
     
     for i in range(len(gene_rows)):
-        # Get start and end of the gene alignment
-        start_align = int(gene_rows.iloc[i,3])
-        end_align = int(gene_rows.iloc[i,4])
+        row = gene_rows.iloc[i]
+        list_gene_start.append(int(row[3]))
+        list_gene_end.append(int(row[4]))
         
-        list_gene_start.append(start_align)
-        list_gene_end.append(end_align)
-        
-        # Get each gene name
-        start_name = info_column[pos_gene[i]].find("=")
-        end_name = info_column[pos_gene[i]].find(";")
-        gene_name = info_column[pos_gene[i]][(start_name+1):end_name]
-        
+        # Extract gene name from attributes
+        attributes = str(row[8])
+        name_match = re.search(r'Name=([^;]+)', attributes)
+        gene_name = name_match.group(1)
         list_gene_names.append(gene_name)
         
+        # Find corresponding mRNA and exons for this gene model
+        mrna_attributes = None
+        exon_scores = []
         
-    ##### - Get the identity of each gene alignment
-    # The identity is written within the mRNA row in the last column
-    # Get the rows that have 'mRNA' in the second column
-    mask_mRNA = input_file.iloc[:,2] == 'mRNA'
-    pos_mRNA = np.flatnonzero(mask_mRNA)
-    mRNA_rows = input_file.iloc[pos_mRNA]
-    
-    # Get the identiy
-    list_identities = []
-    
-    for i in range(len(pos_mRNA)):
-        last_column = mRNA_rows.iloc[i,-1]
+        # Look in mRNA rows (assumes 1:1 gene-to-mRNA)
+        if i < len(mRNA_rows):
+            mrna_attributes = str(mRNA_rows.iloc[i,8])
         
-        identity_pattern = r'identity=(\d+(?:\.\d+)?)'
-        identity_match = re.search(identity_pattern, last_column)
-        identity_value = float(identity_match.group(1)) if identity_match else None
+        # Extract exon scores for this gene model
+        start_idx = pos_gene[i]
+        end_idx = pos_gene[i+1] if i+1 < len(pos_gene) else len(input_file)
+        gene_slice = input_file.iloc[start_idx:end_idx]
+        exon_rows = gene_slice[gene_slice.iloc[:,2] == 'exon']
+        exon_scores = [float(row[5]) for _, row in exon_rows.iterrows()]
+        
+        # Calculate compound score
+        compound_score = calculate_gmap_compound_score(mrna_attributes, exon_scores)
+        list_compound_scores.append(compound_score)
 
-        list_identities.append(identity_value)
-    
+    print(f"Calculated compound scores: {list_compound_scores}")
 
-    # 4. Split dataframe by gene alignment (gene + mRNA + exons + CDS)
-    # For loop to fill a dictionary: each entry is the dataframe from each gene
+    # 4. Split dataframe by gene model
     df_by_gene = {}
-    
     for i in range(len(pos_gene)):
-        # For the last element of the gene index list pos_gene:
         if pos_gene[i] == pos_gene[-1]:
-            df_by_gene[i] = input_file.iloc[pos_gene[i]:len(input_file),:]
-        # For the rest elements of the list:
+            df_by_gene[i] = input_file.iloc[pos_gene[i]:]
         else:
-            start = pos_gene[i]
-            end = pos_gene[i+1]
-            df_by_gene[i] = input_file.iloc[start:end,:]
-   
+            df_by_gene[i] = input_file.iloc[pos_gene[i]:pos_gene[i+1]]
 
-    # Call function to return gene indexes to be filtered
-    index_same_region = genes_same_region(gene_rows, list_gene_start, list_gene_end, list_gene_names, list_identities, pos_gene)
-       
+    # 5. Filter overlapping gene models
+    index_same_region = genes_same_region(gene_rows, list_gene_start, list_gene_end, 
+                                        list_gene_names, list_compound_scores, pos_gene)
 
-    # - Save dataframes of the rest of genes minus filtered genes
+    # 6. Save filtered gene models
     with open(Filepath_output, "w") as new_file:
-        
-        # Iterate over the list of dictionaries for each gene alignment:            
         for i in range(len(df_by_gene)):
-            # Get indexes of each gene dictionary in df_by_gene
             index_df = df_by_gene[i].index
-            
-            # Omit the gene indexes to be filtered:
-            if (any(item in index_same_region for item in index_df) == False):
-                # Save each dataframe using '.to_csv'
+            if not any(item in index_same_region for item in index_df):
                 df_each = df_by_gene[i].to_csv(header=False, index=False, sep='\t')
                 new_file.write(df_each)
-                new_file.write('### \n')
-
+                new_file.write('###\n')
+                
     return True
 
-
-# Loop over all the input files
 def filter_gmap_one_map_per_region(input_dir, output_dir):
-    '''Loop the filter_genes_same_map_region function over all the raw GMAP result annotation files for each genome
-        - input_dir: Path to raw-GFF3 GMAP result annotation files
-        - output_dir: Path to filtered-GFF3 GMAP result annotation files
-    '''
-    # Loop the function 'filter_genes_same_map_region()' over the input files  
+    '''Loop over raw GMAP GFF3 files and apply compound score filtering'''
     for filename in os.listdir(input_dir):
-        # Get name for each input file and modify it for the output file names:
-        filtered_name = filename
-        filtered_name = filtered_name.rsplit('.', 1)[0] 
-        filtered_name = filtered_name + '_FILTERED.gff3'
+        filtered_name = filename.rsplit('.', 1)[0] + '_FILTERED.gff3'
+        Filepath_input = os.path.join(input_dir, filename)
+        Filepath_output = os.path.join(output_dir, filtered_name)
         
-        # Directory to each input and output file:
-        Filepath_gmap_gff3 = os.path.join(input_dir, filename)
-        Filepath_filtered_gff3 = os.path.join(output_dir, filtered_name)
-        
-        # Call function to process input files in order to filter genes and save
-        # output files:
-        if filter_genes_same_map_region (Filepath_gmap_gff3, Filepath_filtered_gff3):
-            # The annotation file was correct and filtering was successful
+        if filter_genes_same_map_region(Filepath_input, Filepath_output):
             print(f"Saved {filtered_name}")
         else:
-            # The annotation file was empty and it was skipped
             print(f"Skipped {filtered_name}")
-        # print empty line for readability
         print()
-
+        

@@ -103,5 +103,5 @@ def format_genewise_output_to_gff_all_files(input_dir, output_dir):
         # Call function to process input files in order to filter genes and save
         # output files:
         format_genewise_output_to_gff(Filepath_input, Filepath_output)
-        print("Saved_" + output_name + '\n')
+        print("Saved_" + output_name)
     

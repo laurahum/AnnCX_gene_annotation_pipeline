@@ -15,7 +15,7 @@ Created on Tue Sep 10 19:41:55 2024
 ## GeneWise aligns several annotation entries on the same region, with overlapping coordinates and different score values, 
 ## and the objective of this filtering step is to leave only the best annotation entries.
 
-## Logic: It two ranges overlap, filter lower bitscore.
+## Logic: If two ranges overlap, filter lower bitscore.
 ##  -> If both ranges have the same bitscore, filter one at random
 
 ## Main function: filter_genewise_one_map_per_region(input_dir, output_dir)
@@ -23,6 +23,7 @@ Created on Tue Sep 10 19:41:55 2024
 import os
 import re
 import numpy as np
+import pandas as pd
 import sys
 from .ranges_overlap import find_ranges_overlap # Function to determine whether two ranges overlap
 from .read_gff3_to_df import read_gff3 # Custom function to read gff3
@@ -31,126 +32,74 @@ from .read_gff3_to_df import read_gff3 # Custom function to read gff3
 
 
 ## Return index of genes to be filtered out
-def genes_same_region (input_file, list_gene_start, list_gene_end, list_gene_names, list_bitscores):
-    """Check whether a gene range is contained in another 
-    gene range: Compares each gene alignment range to the rest. 
-    If the gene range checked is within another gene range 
-    the function filters the gene with lower bitscore.
-    If both bitscore values are the same, filter
-    one gene at random.
-    
-    Returns index of genes to be filtered out.
+def genes_same_region(input_file, list_gene_start, list_gene_end, list_gene_names, list_bitscores):
+    """Returns indices of CDS features to filter out based on bitscore.
+    If ranges overlap, keep ONLY feature with highest bitscore.
+    Ties broken randomly using fixed seed for reproducibility.
     
     Arguments:
-    input_file = dataframe # full dataframe
-    list_gene_start = list(int) # start of gene alignment
-    list_gene_end = list(int) # end of gene alignment
-    list_gene_names = list(str) # name of each gene
-    list_bitscores = list(int) # bitscores of each gene
+    input_file = dataframe # full dataframe of CDS features
+    list_gene_start = list(int) # start of each CDS alignment
+    list_gene_end = list(int) # end of each CDS alignment  
+    list_gene_names = list(str) # name of each CDS
+    list_bitscores = list(float) # bitscores of each CDS
     
-    Prints the reason for the filtering of each annotation entry
+    Prints reason for filtering each annotation entry.
     """
+    list_to_filter = []
+    is_keeper = [True] * len(input_file)
     
-    ###### Genes to be filtered
-    # Two kind of genes to be filtered out:
-    # 1. List for genes that overlap and have smaller bitscore
-    list_gene_same_region = []
-    
-    # 2. List for genes that overlap and have the same bitscore but have lower bitscore
-    list_gene_same_bitscore = []
-    
-    
-    ###### Check the ranges:
     for i in range(len(input_file)):
-        # Range of gene alignment to be checked
-        range_gene_1 = range(list_gene_start[i],list_gene_end[i]+1)
+        if not is_keeper[i]:  # Skip already filtered
+            continue
+            
+        range_gene_1 = range(list_gene_start[i], list_gene_end[i]+1)
+        bitscore_1 = list_bitscores[i]
         
         for j in range(len(input_file)):
-            
-            if i != j: # Prevents comparing one gene to itself
-            # Range of gene alignment to be checked
-                range_gene_2  = range(list_gene_start[j],list_gene_end[j]+1)
-            
-                # Check if gene [i] is within gene [j]
-                if find_ranges_overlap(range_gene_1, range_gene_2):
-                    
-                    # Get bitscores for genes [i] and [j]
-                    bitscore_gene_1 = list_bitscores[i]
-                    bitscore_gene_2 = list_bitscores[j]
-                    
-                    # Get gene name for genes [i] and [j]
-                    gene_name_1 = list_gene_names[i]
-                    gene_name_2 = list_gene_names[j]
+            if i == j or not is_keeper[j]:  # Skip self and filtered
+                continue
                 
+            range_gene_2 = range(list_gene_start[j], list_gene_end[j]+1)
             
-                    # 1. List for genes that overlap and have smaller bitscore
-                    # If the bitscore of gene [i] is higher, filter gene [j]
-                    if bitscore_gene_1 > bitscore_gene_2:
-                        list_gene_same_region.append(j)
-                        print("1_Gene_" + gene_name_2 + "_index_" + str(j) + "_overlaps_with_" + gene_name_1 + "_index_" + str(i) + "_FILTERED")
-                        
-                    elif bitscore_gene_1 < bitscore_gene_2:
-                        list_gene_same_region.append(i)
-                        print("2_Gene_" + gene_name_1 + "_index_" + str(i) + "_overlaps_with_" + gene_name_2 + "_index_" + str(j) + "_FILTERED")
+            if find_ranges_overlap(range_gene_1, range_gene_2):
+                bitscore_2 = list_bitscores[j]
+                
+                if bitscore_1 > bitscore_2:
+                    # i beats j -> filter j
+                    list_to_filter.append(j)
+                    is_keeper[j] = False
+                    print(f"1_Gene_{list_gene_names[j]}_index_{j}_overlaps_with_{list_gene_names[i]}_index_{i}_FILTERED")
                     
-                    # 2. List for genes that overlap because the range is 
-                    # exactly the same to other gene but have lower bitscore
-                    else:
-                        if ((any(i in sublist for sublist in list_gene_same_bitscore)) == False):
-                            list_gene_same_bitscore.append([i,j])
-                            print("5_Gene_" + gene_name_1 + "_index_" + str(i) + "_same_bitscore_as_" + gene_name_2 + "_index_" + str(j))
-
-                            
-                                                      
-    ###### Return list of unique genes to be filtered    
-     # No overlapping values found
-    if (len(list_gene_same_region) == 0) and (len(list_gene_same_bitscore) == 0):
-        unique_genes_1 = []
-        
+                elif bitscore_1 < bitscore_2:
+                    # j beats i -> filter i and stop
+                    list_to_filter.append(i)
+                    is_keeper[i] = False
+                    print(f"2_Gene_{list_gene_names[i]}_index_{i}_overlaps_with_{list_gene_names[j]}_index_{j}_FILTERED")
+                    break
+                    
+                else:  # Tie
+                    rng = np.random.default_rng(seed=42)
+                    winner_idx = rng.choice([i, j], size=1)[0]
+                    loser_idx = j if winner_idx == i else i
+                    list_to_filter.append(loser_idx)
+                    is_keeper[loser_idx] = False
+                    winner_name = list_gene_names[winner_idx]
+                    loser_name = list_gene_names[loser_idx]
+                    print(f"5_Gene_{loser_name}_index_{loser_idx}_tie_with_{winner_name}_index_{winner_idx}")
+                    if loser_idx == i:
+                        break
+    
+    unique_genes = np.unique(list_to_filter)
+    
+    if len(unique_genes) == 0:
         print("A_No_genes_filtered")
-        
-        return(unique_genes_1)
-   
+    else:
+        for i in unique_genes:
+            print(f"B_Filtered_gene_{list_gene_names[i]}_index_{i}")
     
-    # Ony list_gene_same_region has values
-    if (len(list_gene_same_region) > 0) and (len(list_gene_same_bitscore) == 0):
-        unique_genes_1 = np.unique(list_gene_same_region)
-        
-        # Control: print what genes will be filtered
-        for i in unique_genes_1:
-            index_gene = i
-            name_gene = list_gene_names[index_gene]
-            print("B_Filtered_gene_" + name_gene + "_index_" + str(index_gene))
-        
-        return(unique_genes_1)
-    
-    # Both list_gene_same_region and list_gene_same_bitscore have values
-    if (len(list_gene_same_region) > 0) and (len(list_gene_same_bitscore) > 0):
-        unique_genes_1 = np.unique(list_gene_same_region)
-        
-        # Filter random element of each list in list_gene_same_bitscore
-        filter_values = []
-        for i in range(len(list_gene_same_bitscore)):
-            # Create a new random number generator, with a set seed for reproducibility
-            rng = np.random.default_rng(seed=42)
-            # Randomly select an index
-            index_random = rng.choice(list_gene_same_bitscore[i], size=1)[0]
-            filter_values.append(index_random)
-            
-        unique_genes_3 = np.unique(filter_values)
-        
-        # Merge both lists
-        gene_index_to_be_filtered = list(unique_genes_1) + list(unique_genes_3)
-        unique_genes_filter = np.unique(gene_index_to_be_filtered)
-        
-        # Control: print what genes will be filtered
-        for i in unique_genes_filter:
-            index_gene = i
-            name_gene = list_gene_names[index_gene]
-            print("C_Filtered_gene_" + name_gene + "_index_" + str(index_gene))
-        
-        return(unique_genes_filter)
-    
+    return unique_genes.tolist()
+
    
 
 ## Function to filter genes in the input gff3 file (Filepath_input)
@@ -185,8 +134,8 @@ def filter_genes_same_map_region (Filepath_input, Filepath_output):
     input_file = input_file.fillna(0)
     
     ##### - Convert column 3 and 4 from float to int
-    input_file.iloc[:,3] = input_file.iloc[:,3].astype(int)
-    input_file.iloc[:,4] = input_file.iloc[:,4].astype(int)
+    input_file[3] = pd.to_numeric(input_file[3], errors='coerce').astype('Int64')
+    input_file[4] = pd.to_numeric(input_file[4], errors='coerce').astype('Int64')
 
     ##### - Get the name and interval of each gene alignment
     list_gene_names = []
@@ -205,7 +154,15 @@ def filter_genes_same_map_region (Filepath_input, Filepath_output):
         list_gene_end.append(end_align)
         
         # Get each gene name
-        gene_name = input_file.iloc[i,0]
+        get_last_column = input_file.iloc[i,-1]
+        
+        match = re.search(r'Target=([^;]+)', get_last_column)
+        
+        if match:
+    	    gene_name = match.group(1)
+        else:
+    	    gene_name = "unknown"
+        
         list_gene_names.append(gene_name)
         
     

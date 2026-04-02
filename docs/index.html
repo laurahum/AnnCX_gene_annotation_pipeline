@@ -1,20 +1,32 @@
-<html><head><style>body { font-family: monospace; font-size: 14px; white-space: pre-wrap; }</style></head><body><pre>###################################################################################################
-######################## AnnCX_gene_annotation_pipeline (v1.0.0) ##################################
-###################################################################################################
+<html><head><style>body { font-family: monospace; font-size: 14px; white-space: pre-wrap; }</style></head><body><pre>  *****************************************************************************************
+  *											  *
+  *		         d8888                    .d8888b. Y88b   d88P 			  *	
+  *		        d88888                   d88P  Y88b Y88b d88P  			  *	
+  *		       d88P888                   888    888  Y88o88P   			  *
+  *		      d88P 888 88888b.  88888b.  888          Y888P    			  *
+  *		     d88P  888 888 "88b 888 "88b 888          d888b    			  *
+  *		    d88P   888 888  888 888  888 888    888  d88888b   			  *
+  *		   d8888888888 888  888 888  888 Y88b  d88P d88P Y88b  			  *
+  *		  d88P     888 888  888 888  888  "Y8888P" d88P   Y88b 			  *
+  *											  *
+  *  	         +  Exploration of gene-rich complex genomic regions  +          	  *
+  *                                                  					  *
+  *****************************************************************************************
 
-AnnCX is gene annotation pipeline designed for the analysis of gene-rich complex genomic regions 
-demonstrating to outperform the widely used MAKER pipeline in our benchmarking on complex genomic 
-regions (paper). AnnCX automates all intermediate steps to provide comprehensive results with 
+AnnCX is gene annotation pipeline designed for the analysis of gene-rich complex genomic regions.
+ AnnCX automates all intermediate steps to provide comprehensive results with 
 minimal user input. Key novel features include:
 
--    Iterative extraction of target regions from whole-genome sequences to focus on complex 
-genomic areas (Step 1: extract ROI = OPTIONAL)
--    Incorporate a more diverse array of individual annotation tools than other pipelines with an 
-emphasis on the accurate identification of exon-intron boundaries.
--    Detection and annotation of ambiguous nucleotide regions (assembly gaps) to provide a clear 
-representation of problematic genome assemblies that commonly affect complex regions regions.
--    Support for manual curation by implementing an automatic visualization of the raw annotation 
-results once the pipeline has completed its execution.
+- 	Iterative extraction of target regions from whole-genome sequences to focus on complex
+ genomic areas (OPTIONAL).
+- 	Incorporate a 7+ diverse array of individual annotation tools with an emphasis on the
+ accurate identification of exon-intron boundaries.
+- 	Genome-wide identification of query genes to detect possible genes located outside the
+ region of interest (OPTIONAL).
+- 	Detection and annotation of ambiguous nucleotide regions (assembly gaps) to provide a
+ clear representation of problematic genome assemblies that commonly affect complex regions.
+- 	Support for manual curation by implementing an automatic visualization of the raw
+ annotation results once the pipeline has completed its execution.
 
 
 Custom supplementary tools to assess quality of assembly:
@@ -74,10 +86,12 @@ structure (Jo and Choi, 2015).
 <b>Installation</b>
 ---------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------
+AnnCX has many dependencies, so please allow sufficient time for installation
+
     <u>1. Clone this repository:</u>
     
     git clone <a href=https://github.com/laurahum/AnnCX_gene_annotation_pipeline.git>https://github.com/laurahum/AnnCX_gene_annotation_pipeline.git</a>	# Link to repository
-    cd path/to/pipeline/folder							# Directory of the repository folder
+    cd path/to/pipeline/folder					# Directory of the repository folder
 
     <u>2. Installation</u>
     
@@ -99,30 +113,35 @@ structure (Jo and Choi, 2015).
    
    <u>2. Run the pipeline:</u>
 
+<b>*NOTE:*</b>
+For best compatibility, name FASTA files and sequence headers using simple names without dots (.),
+special characters, or spaces
+
 <b>*IMPORTANT:*</b>
 Please ensure that Artemis is closed before running the pipeline. If Artemis is open, the genome 
 files will be annotated, but the new annotations may not appear in the Artemis interface*
 
-*Step 1: extract ROI = OPTIONAL - If the user provides flanking regions, AnnCX checks how many 
-genome files contain both flanking genes and, by default, prompts whether to continue extract ROI 
-and annotate on those genomes. Use --skip-prompt to proceed automatically without asking for 
-confirmation.*
-
-*EVM is run using the recommended evidence weights described by the authors 
-(see: https://doi.org/10.1186/gb-2008-9-1-r7)
+*EVM is run using weights based on those recommended by the authors 
+(see: https://doi.org/10.1186/gb-2008-9-1-r7) and optimized for gene-rich complex genomic regions.
 If the user needs to adjust these parameters, the weights file is located at: 
 ../weights/weights_recommended.txt*
 
 
-usage: AnnCX.py [-h] --genome GENOME --namegenes NAMEGENES --querycDNA QUERYCDNA --queryprot
-                QUERYPROT --queryexon QUERYEXON --spsrepeatmasker SPSREPEATMASKER --spsaugustus
-                SPSAUGUSTUS --outdir OUTDIR [--flanking FLANKING] [--maxintron MAXINTRON]
-                [--threads THREADS] [--overlapsEVM OVERLAPSEVM] [--skip-prompt]
+usage: AnnCX.py [-h] --genome GENOME --namegenes NAMEGENES
+                     --querytranscript QUERYTRANSCRIPT --queryprot QUERYPROT
+                     --queryexon QUERYEXON [--spsrepeatmasker SPSREPEATMASKER]
+                     [--spsaugustus SPSAUGUSTUS] --outdir OUTDIR [--flanking FLANKING]
+                     [--maxintron MAXINTRON] [--threads THREADS] [--overlapsEVM OVERLAPSEVM]
+                     [--skipprompt] [--skipRepeatmasker] [--genomemasked GENOMEMASKED]
+                     [--repeatannotations REPEATANNOTATIONS] [--WGannotation]
+                     [--tools {blast,gmap,genewise,exonerate,augustus,minimap2,miniprot,all} 
+                     [{blast,gmap,genewise,exonerate,augustus,minimap2,miniprot,all} ...]]
+                     [--skipOpenArtemis] [--skipCreateArtemis] [--version]
+
 
 AnnCX gene annotation pipeline
 
-options:
-  -h, --help            show this help message and exit
+arguments:
   
   --genome GENOME       
   			Directory where the genomic FASTA files are located. 
@@ -137,11 +156,11 @@ options:
                         
                         Example: --namegenes NKG2
                         
-  --querycDNA QUERYCDNA
-                        FASTA file with entries for cDNA sequences to use as query. 
+  --querytranscript QUERYTRANSCRIPT
+                        FASTA file with entries for transcript sequences to use as query. 
                         
-                        Example: --querycDNA /path/to/query/querycDNA.fasta
-                        
+                        Example: --querytranscript /path/to/query/querytranscript.fasta
+                       
   --queryprot QUERYPROT
                         FASTA file with entries for protein sequences to use as query. 
                         
@@ -223,7 +242,7 @@ options:
   --overlapsEVM OVERLAPSEVM
                         (OPTIONAL) Filter for the EVM implementation within AnnCX.
                         Number of overlapping gene annotation tools to support the consensus 
-                        annotation results (0-7, 0 = no filter, Default = 4). 
+                        annotation results (0-9, 0 = no filter, Default = 4). 
                         
                         Example: --overlapsEVM 2
                         
@@ -233,7 +252,67 @@ options:
                         process. 
                         
                         Example: --skip-prompt
+
+  --skipRepeatmasker    (OPTIONAL) Skip hard-masking step (RepeatMasker). 
+  			User must specify a directory with masked genomes in --genomemasked and 
+  			a (optional) directory with repeat annotations in --repeatannotations.
+  			
+  			WARNING:
+            		- FASTA files in --genome MUST have been used to produce FASTA files in 
+            		--genomehardmasked and therefore the FASTA sequences MUST be the same length.
+            		- FASTA files in --genomemasked MUST be hardmasked
+            		
+            		If using this argument on the output of AnnCX, use the following directories:
+            		--genome /path/to/output/AnnCX_namegenes/1_extract_ROI/7_extracted_roi_raw
+  			--genomemasked /path/to/output/AnnCX_namegenes/3_repeatmasker/roi_hardmasked
+  			--repeatannotations /path/to/output/AnnCX_namegenes/3_repeatmasker/repeat_annotations
+  			
+  			Example: --skipRepeatmasker
+ 
+  --genomemasked GENOMEMASKED
+                        (OPTIONAL. REQUIRED if using --skipRepeatmasker) Directory where the
+                        genomic FASTA files are located (Hardmasked). 
                         
+                        Example: --genomemasked /path/to/genomes_hardmasked
+                        
+  --repeatannotations REPEATANNOTATIONS
+                        (OPTIONAL. RECOMMENDED if using --skipRepeatmasker) Directory where the
+                        repeat annotation GFF files are located. This file is used in the 
+                        visualization in Artemis. 
+                        
+                        Example: --repeatannotations /path/to/repeat_annotations
+                        
+  --WGannotation        (OPTIONAL) Run minimap2 to search for --querytranscript in whole genome sequences.
+    			Results summarized in a report (/path/to/output/AnnCX_namegenes/0_WG_annotation_minimap2/report/report_WGannotation.txt) 
+    			
+  			WARNING:
+  			- Files in --genome should be a whole genome sequence or contain more than one contig
+                        
+                        Example: --WGannotation
+                        
+  --tools 		{blast,gmap,genewise,exonerate,augustus,minimap2,miniprot,all} 
+  
+                        (OPTIONAL) Which gene annotation tools to run in Step 4. Choose from: 	
+                        blast gmap genewise exonerate augustus minimap2 miniprot, 
+                        or use "all" (default) to run everything. 
+                        The consensus annotation will be produced by EVM taking into account the
+                        annotation data and weights of only the tools selected.
+                        
+                        Example: --tools blast gmap augustus
+                        
+  --skipOpenArtemis     (OPTIONAL) Skip the automatic open of the Artemis interface. This option
+                        still writes the projects to Artemis for visualization but does not open
+                        Artemis at the end of the pipeline run. If using this option and need to
+                        open Artemis afterwards: (AnnCX) user@pc:~$ art. 
+                        
+                        Example: --skipOpenArtemis
+                        
+  --skipCreateArtemis   (OPTIONAL) Skip prepare visualization of annotation results in Artemis
+                        (Step 8). This option does not write the projects to Artemis for
+                        visualization. 
+                        
+                        Example: --skipCreateArtemis
+                       
   --version		Version of AnnCX
                         
                         
@@ -241,24 +320,60 @@ options:
    Example using the example data provided in the repository:
    
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./AnnCX.py \
-   --genome examples/genome \
+   --genome examples/genomic_sequences/genome \
    --namegenes NKG2 \
-   --querycDNA examples/Genome_annotation/cDNA_sequences.fasta \
+   --querytranscript examples/Genome_annotation/transcript_sequences.fasta \
    --queryprot examples/Genome_annotation/protein_sequences.fasta \
    --queryexon examples/Genome_annotation/exon_sequences.fasta \
    --spsrepeatmasker primates \
    --spsaugustus human \
    --outdir /path/to/output/folder/ \
-   --flanking examples/Genome_annotation/flanking_regions.fasta \
+   --flanking examples/Genome_annotation/flanking_regions.fasta \  # Step 1 - Optional
+   --WGannotation \  # Step 0 - Optional to search for query genes genome-wide
    --threads your_threads
-
+  
    
-   Artemis is opened automatically for the visualization of the annotation output produced 
-   by AnnCX
+   *Step 1: extract ROI = OPTIONAL - If the user provides flanking regions, AnnCX checks how many 
+   genome files contain both flanking genes and, by default, prompts whether to continue extract 
+   ROI and annotate on those genomes. Use --skip-prompt to proceed automatically without asking 
+   for confirmation.*
 
+   Example skip step 1:
 
-   <u>3. Open results in Artemis again</u> 
+   (AnnCX) user@computer:~/path/to/pipeline/folder$ ./AnnCX.py \
+   --genome examples/genomic_sequences/genomic_ROI \
+   --namegenes NKG2 \
+   --querytranscript examples/Genome_annotation/transcript_sequences.fasta \
+   --queryprot examples/Genome_annotation/protein_sequences.fasta \
+   --queryexon examples/Genome_annotation/exon_sequences.fasta \
+   --spsrepeatmasker primates \
+   --spsaugustus human \
+   --outdir /path/to/output/folder/ \
+   --threads your_threads
    
+   
+   *Step 3: Hardmasking ROI = OPTIONAL - If the user provides an already hardmasked genomic
+   sequence and a repeat annotation file.*
+
+   Example skip step 3:
+
+   (AnnCX) user@computer:~/path/to/pipeline/folder$ ./AnnCX.py \
+   --genome examples/genomic_sequences/genomic_ROI \
+   --genome examples/genomic_sequences/genomic_ROI_masked \
+   --namegenes NKG2 \
+   --querytranscript examples/Genome_annotation/transcript_sequences.fasta \
+   --queryprot examples/Genome_annotation/protein_sequences.fasta \
+   --queryexon examples/Genome_annotation/exon_sequences.fasta \
+   --skipRepeatmasker \
+   --repeatannotations examples\Genome_annotation\repeat_annotations \ # Optional
+   --spsaugustus human \
+   --outdir /path/to/output/folder/ \
+   --threads your_threads
+   
+
+   <u>3. Open results in Artemis</u> 
+Artemis is opened automatically for the visualization of the annotation output produced by AnnCX
+
 After the pipeline has finished running and you have closed Artemis, you can reopen Artemis 
 within the conda environment to visualize the annotation results again:
 
@@ -287,6 +402,14 @@ change is small or if the change is substantial in Artemis Gene Builder (click o
 
 user@computer:~/path/to/output/folder/AnnCX_namegenes$ tree
 .
+├── 0_WG_annotation_minimap2
+│   ├── minimap2
+│   │   ├── filtered   # Genes found by minimap2 after filtering out overlapping hits
+│   │   ├── formatted  # Raw genes found by minimap2 including overlapping hits (GFF3)
+│   │   └── raw	       # Raw genes found by minimap2 including overlapping hits (PAF)   
+│   └── <b>report      # Report for WGannotation</b>
+│       └── report_WGannotation.txt
+|
 ├── 1_extract_ROI	# Result of Step 1: Extract ROI
 │   ├── 3_found_flanking_genes	# Genomes in which both flanking genes were found
 │   │   ├── txt_output_no.txt	# Both flanking genes
@@ -296,49 +419,64 @@ user@computer:~/path/to/output/folder/AnnCX_namegenes$ tree
 │   │   ├── Non_single_contig_list.txt	# Not in the same assembly unit (chr/contig) → discarded 
 │   │   └── Single_contig_list.txt	# In the same assembly unit → continue annotation
 │   │
-│   └── 7_extracted_roi_raw	# Extracted genomic regions of interest between flanking genes
-│       └── NameGenome_NameGenes_AssemblyUnit_ROI.fasta  → <b>imported to Artemis</b>
+│   └── <b>7_extracted_roi_raw	# Extracted genomic regions of interest between flanking genes</b>
+│       └── NameGenome_NameGenes_AssemblyUnit_ROI.fasta  → →  <b><u>imported to Artemis</b></u>
 │   
-├── 2_annotate_N_gaps	# Result of Step 2: Annotate gaps in ROI  → <b>imported to Artemis</b>
-│   └── NameGenome_annotate_N_stretches.gff3	# Annotation of gaps in assembly
+├── <b>2_annotate_N_gaps   # Result of Step 2: Annotate gaps in ROI  → →  <u>imported to Artemis</b></u>
+│   └── NameGenome_annotate_N_stretches.gff3	 # Annotation of gaps in assembly
 │   
 ├── 3_repeatmasker	# Result of Step 3: Hard-masking ROI
-│   ├── repeat_annotations	# Annotation of repeats  → <b>imported to Artemis</b>
+│   ├── <b>repeat_annotations	# Annotation of repeats  → →  <u>imported to Artemis</b></u>
 │   │   └── NameGenome_NameGenes_AssemblyUnit_ROI.fasta.out.gff
-│   └── roi_hardmasked		# Hard-masked genomic region of interest
+│   └── <b>roi_hardmasked		# Hard-masked genomic region of interest</b>
 │       └── NameGenome_NameGenes_AssemblyUnit_ROI.fasta.masked
 │   
 ├── 4_gene_annotation_tools	# Result of Step 4: Run gene annotation tools
 │   ├── AUGUSTUS
-│   │   └── raw	  # Annotation AUGUSTUS (with protein profile) → <b>imported to Artemis</b>
+│   │   └── <b>raw      # Annotation AUGUSTUS (with protein profile) → →  <u>imported to Artemis</b></u>
 │   │       └── NameGenome_ROI_NameGenes_protprof_augustus 
 │   ├── BLAST
 │   │   ├── BLASTN
-│   │   │   └── filtered	# Annotation BLASTN (evidence: cDNA) → <b>imported to Artemis</b>
-│   │   │       └── NameGenome_ROI_NameGenes_cDNA_blastn_formatted_FILTERED.gff
+|   |   |   ├── formatted  # Raw genes identified by BLAST with overlapping hits (GFF format)
+│   │   │   └── <b>filtered	# Annotation BLASTN (evidence: transcript) → →  <u>imported to Artemis</b></u>
+│   │   │       └── NameGenome_ROI_NameGenes_transcript_blastn_formatted_FILTERED.gff
 │   │   └── TBLASTN
-│   │       └── filtered	# Annotation TBLASTN (evidence: protein) → <b>imported to Artemis</b>
+|   |       ├── formatted  # Raw genes identified by BLAST with overlapping hits (GFF format)
+│   │       └── <b>filtered	# Annotation TBLASTN (evidence: protein) → →  <u>imported to Artemis</b></u>
 │   │           └── NameGenome_ROI_NameGenes_protein_tblastn_formatted_FILTERED.gff
 │   ├── Exonerate
-│   │   └── filtered	# Annotation Exonerate (evidence: cDNA) → <b>imported to Artemis</b>
-│   │       └── NameGenome_ROI_NameGenes_cDNA_exonerate_FORMATTED_FILTERED.gff
+|   |   ├── formatted  # Raw genes identified by Exonerate with overlapping hits (GFF format)
+│   │   └── <b>filtered	# Annotation Exonerate (evidence: transcript) → →  <u>imported to Artemis</b></u>
+│   │       └── NameGenome_ROI_NameGenes_transcript_exonerate_FORMATTED_FILTERED.gff
 │   ├── GMAP
-│   │   ├── GMAP_cDNA
-│   │   │   └── filtered	# Annotation GMAP (evidence: cDNA) → <b>imported to Artemis</b>
-│   │   │       └── NameGenome_NameGenes_cDNA_ROI_gmap_FILTERED.gff3
+│   │   ├── GMAP_transcript
+|   |   |   ├── formatted  # Raw genes identified by GMAP with overlapping hits (GFF format)
+│   │   │   └── <b>filtered  # Annotation GMAP (evidence: transcript) → →  <u>imported to Artemis</b></u>
+│   │   │       └── NameGenome_NameGenes_transcript_ROI_gmap_FILTERED.gff3
 │   │   └── GMAP_exon
-│   │       └── filtered	# Annotation GMAP (evidence: exon) → <b>imported to Artemis</b>
+|   |       ├── formatted  # Raw genes identified by GMAP with overlapping hits (GFF format)
+│   │       └── <b>filtered	# Annotation GMAP (evidence: exon) → →  <u>imported to Artemis</b></u>
 │   │           └── NameGenome_NameGenes_exon_ROI_gmap_FILTERED.gff3
-│   └── GeneWise
-│       └── filtered	# Annotation GeneWise (evidence: protein) → <b>imported to Artemis</b>
-│           └── NameGenome_ROI_NameGenes_prot_genewise_FORMATTED_FILTERED.gff
+│   ├── GeneWise
+|   |   ├── formatted  # Raw genes identified by GeneWise with overlapping hits (GFF format)
+│   |   └── <b>filtered	# Annotation GeneWise (evidence: protein) → →  <u>imported to Artemis</b></u>
+│   |       └── NameGenome_ROI_NameGenes_prot_genewise_FORMATTED_FILTERED.gff
+|   |
+│   ├── Minimap2
+|   |   ├── formatted  # Raw genes identified by Minimap2 with overlapping hits (GFF format)
+│   |   └── <b>filtered	 # Annotation Minimap2 (evidence: transcript) → →  <u>imported to Artemis</b></u>
+│   |       └── NameGenome_ROI_NameGenes_transcript_minimap2_FORMATTED_FILTERED.gff
+|   |
+│   └── Miniprot
+|       ├── formatted  # Raw genes identified by Miniprot with overlapping hits (GFF format)
+│       └── <b>filtered	 # Annotation Miniprot (evidence: protein) → →  <u>imported to Artemis</b></u>
+│           └── NameGenome_ROI_NameGenes_prot_miniprot_FORMATTED_FILTERED.gff
+|
+├── 7_consensus		# Result of Step 7: Generate consensus annotation
+│   └── <b>4_consensus_result   # Annotation consensus → →  <u>imported to Artemis</b></u>
+│           └── NameGenome_consensus_filter_OverlapsEVM_AnnCX.gff3
 │   
-├── 7_consensus_EVM	# Result of Step 7
-│   └── 3_filter
-│       └── filter_3   # Annotation consensus (number = overlapsEVM filter) → <b>imported to Artemis</b>
-│           └── NameGenome_consensus_filter_OverlapsEVM.gff3
-│   
-├── output_raw_FASTA_annotations	<b># Raw AnnCX output annotations converted to FASTA</b>
+├── <b>output_raw_FASTA_annotations	# Raw AnnCX output annotations converted to FASTA</b>
 │   ├── NameGenome_NameGenes_CDS_all_sequence.fasta	# concatenated CDS (~cDNA)
 │   ├── NameGenome_NameGenes_CDS_sequence.fasta		# each CDS numbered
 │   ├── NameGenome_NameGenes_exon_all_sequence.fasta	# concatenated exons
@@ -353,7 +491,7 @@ user@computer:~/path/to/output/folder/AnnCX_namegenes$ tree
 │   └── missed_annotations	# Annotation files from an individual tool missing
 │   
 └── report
-    └── pipeline_report.txt	# Full run report of running AnnCX
+    └── AnnCX_execution_report.txt	# Full run report of running AnnCX
 
 
 
@@ -362,7 +500,7 @@ user@computer:~/path/to/output/folder/AnnCX_namegenes$ tree
 	<b>- Identify predicted genes:		identify_pred2ref feature</b>
 ---------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------
-This feature produces a heatmap plot (SVG) for the set of genes predicted in an annotated genome. 
+This feature produces a heatmap plot (SVG) and a report for the set of genes predicted in an annotated genome. 
 The plot displays predicted genes (x-axis) against reference genes (y-axis). Columns show 
 alignment results for each predicted gene. Individual cells represent the match quality for each 
 pair-wise alignment and indicate BLAST’s percentage identity as a intuitive metric of the 
@@ -473,7 +611,9 @@ user@computer:~/path/to/output/folder/Identify_pred2ref$ tree
 .
 ├── BLASTN_output  # Results from running BLASTN
 │   └── Identify_pred2ref_NameGenome_TypeSeqQueryvsTypeSeqSubject
-└── Heatmaps	   # Plot for the genome of study
+├── <b>Report         # Report with results</b>
+|   └── NameGenome_identify_pred2ref_best_matches.txt
+└── <b>Heatmaps	   # Plot for the genome of study</b>
     └── NameGenome_identify_pred2ref.svg
 
 
@@ -581,7 +721,7 @@ user@computer:~/path/to/output/folder/Identify_rearrangements$ tree
 .
 ├── Exonerate_output	# Results from running Exonerate
 │   └── Exonerate_identify_artificial_rearrangements_NameGenome
-└── Heatmaps	# Plots for each gene of study
+└── <b>Heatmaps	# Plots for each gene of study</b>
     ├── NameGenome_Gene1_identify_rearrangements.svg
     ├── NameGenome_Gene2_identify_rearrangements.svg
     ├── NameGenome_Gene3_identify_rearrangements.svg
@@ -610,7 +750,7 @@ exon, CDS
 <b>*IMPORTANT:*</b>
 Input FASTA file with the genomic region (--genome) that was annotated. If the annotations are 
 produced by AnnCX using flanking genes, give the extracted ROI, not the whole genome FASTA (/path/
-to/output/AnnCX_GeneNames/1_extract_ROI/7_extracted_roi_raw)*
+to/output/AnnCX_GeneNames/1_extract_ROI/7_extracted_roi_raw)
 
 
 usage: annotation2fasta.py [-h] --annotation ANNOTATION --genome GENOME --namegenome NAMEGENOME
@@ -664,9 +804,9 @@ options:
    Example using the example data provided in the repository:
 
    (AnnCX) user@computer:~/path/to/pipeline/folder$ ./src/annotation2fasta.py \
-   --annotation examples/annotate2fasta \
-   --genome examples/genome \
-   --namegenome Macaca_mulatta \
+   --annotation examples/annotate2fasta/GFF3 \
+   --genome examples/genomic_sequences/genome \
+   --txtgenome examples/annotate2fasta/TXT/txt_genome.txt \
    --nameproject extract_annotation_NKG2 \
    --outdir /path/to/output/folder
 

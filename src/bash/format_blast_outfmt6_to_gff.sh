@@ -55,7 +55,7 @@ format_blastn_out6_to_gff(){
 	
         # 1. awk to format the order of the tab-delimited fields
         # 2. sed to convert the words minus or plus for the strand orientation to - or +
-        awk '{print $2"\tblast\tBLASTCDS\t"$9"\t"$10"\t"$11"\t"$13"\t.\tID=Gene"$1";Name="$2";pident="$3";length="$4";bitscore="$12}' "$input_file" | sed "s/minus/-/g" | sed "s/plus/+/g" > "$output_dir_gff/${genome}_ROI_${gene_to_annotate}_cDNA_blastn.gff"
+        awk '{print $2"\tblast\tBLASTCDS\t"$9"\t"$10"\t"$11"\t"$13"\t.\tID=Gene"$1";Name="$2";pident="$3";length="$4";bitscore="$12";qcovs="$14";gapopen="$6}' "$input_file" | sed "s/minus/-/g" | sed "s/plus/+/g" > "$output_dir_gff/${genome}_ROI_${gene_to_annotate}_transcript_blastn.gff"
     
     done < "$single_contig_list"  
     
@@ -69,12 +69,12 @@ format_blastn_out6_to_gff(){
             ln=$(echo $line | awk -F ' ' '{ print $7 }')
             # If "-" -> start > stop -> invert order
             if [ "$ln" = "-" ]; then
-                echo $line | awk '{print $1"\t"$2"\t"$3"\t"$5"\t"$4"\t"$6"\t"$7"\t"$8"\t"$9}' >> "$output_dir_gff_formatted/${genome}_ROI_${gene_to_annotate}_cDNA_blastn_formatted.gff"
+                echo $line | awk '{print $1"\t"$2"\t"$3"\t"$5"\t"$4"\t"$6"\t"$7"\t"$8"\t"$9}' >> "$output_dir_gff_formatted/${genome}_ROI_${gene_to_annotate}_transcript_blastn_formatted.gff"
             # else "+" -> start < stop -> keep order
             else
-                echo $line | awk '{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9}' >> "$output_dir_gff_formatted/${genome}_ROI_${gene_to_annotate}_cDNA_blastn_formatted.gff"
+                echo $line | awk '{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9}' >> "$output_dir_gff_formatted/${genome}_ROI_${gene_to_annotate}_transcript_blastn_formatted.gff"
             fi
-        done < "$output_dir_gff/${genome}_ROI_${gene_to_annotate}_cDNA_blastn.gff"
+        done < "$output_dir_gff/${genome}_ROI_${gene_to_annotate}_transcript_blastn.gff"
 
     done < "$single_contig_list" 
 
@@ -99,7 +99,7 @@ format_tblastn_out6_to_gff(){
            
         # 1. awk to format the order to the tab-delimited fields
         # The output of tblastn did not produce plus or minus, the column is N/A instead
-        awk '{print $2"\tblast\tBLASTCDS\t"$9"\t"$10"\t"$11"\t"$13"\t.\tID=Gene"$1";Name="$2";pident="$3";length="$4";bitscore="$12}' "$input_file" > "$output_dir_gff/${genome}_ROI_${gene_to_annotate}_protein_tblastn.gff"
+        awk '{print $2"\tblast\tBLASTCDS\t"$9"\t"$10"\t"$11"\t"$13"\t.\tID=Gene"$1";Name="$2";pident="$3";length="$4";bitscore="$12";qcovs="$14";gapopen="$6}' "$input_file" > "$output_dir_gff/${genome}_ROI_${gene_to_annotate}_protein_tblastn.gff"
 
     done < "$single_contig_list"
     

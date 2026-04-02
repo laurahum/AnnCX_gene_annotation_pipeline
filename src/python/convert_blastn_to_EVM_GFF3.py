@@ -6,7 +6,7 @@ Created on Wed Sep 11 01:16:27 2024
 @author: lahumada
 """
 
-# This script converts formatted filtered GFF output from BLASTN (cDNA) to a format compatible with EVM
+# This script converts formatted filtered GFF output from BLASTN (transcript) to a format compatible with EVM
 #
 # 1. Convert features
 # The output from BLASTN contains for features:
@@ -45,7 +45,7 @@ def convert_blastn_to_EVM(input_file, output_file, source):
         - input_file (str): Path to the input BLASTN output file
         - output_file (str): Path to the output GFF3 file compatible with EVM
         - source (str): Name of the tool used to generate the annotation output. Possible values:
-            - blastn: run BLASTN with cDNA as query
+            - blastn: run BLASTN with transcript as query
     """
     
     with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
@@ -103,7 +103,7 @@ def convert_blastn_to_EVM_all_files(input_dir, output_dir, source):
         - input_dir: Path to formatted-filtered-GFF BLASTN result annotation files
         - output_dir: Path to formatted-filtered-EVM-GFF BLASTN result annotation files
         - source: Name of the tool used to generate the annotation output. Possible values:
-            - blastn: run BLASTN with cDNA as query
+            - blastn: run BLASTN with transcript as query
     '''
     # Loop the main function over the input files
     for filename in os.listdir(input_dir):
@@ -117,4 +117,4 @@ def convert_blastn_to_EVM_all_files(input_dir, output_dir, source):
     
         # Call function to process input files
         convert_blastn_to_EVM(Filepath_input, Filepath_output, source)
-        print("Saved_" + output_name + '\n')
+        print("Saved_" + output_name)

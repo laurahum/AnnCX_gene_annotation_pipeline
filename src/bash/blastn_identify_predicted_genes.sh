@@ -26,8 +26,6 @@
 # - Ensure that BLASTN is installed and accessible in the current environment.
 # - BLASTN output format is set to outfmt 6 with specific fields:
 #   "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovs"
-# - The function uses a gap opening penalty of 1 and a gap extension penalty of 1.
-
 
 
 blastn_run_identify_gene(){

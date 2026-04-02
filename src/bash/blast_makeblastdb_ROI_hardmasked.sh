@@ -26,7 +26,6 @@
 # - makeblastdb is run with options: -dbtype nucl -parse_seqids
 
 
-
 makeblastdb_run(){
     local ROI_hardmasked_dir="$1"
     local output_dir="$2"
@@ -36,7 +35,7 @@ makeblastdb_run(){
         echo "$genome"
         
         # Dynamically find the matching file for $genome
-        fasta_file=$(compgen -G "$ROI_hardmasked_dir/${genome}*.fasta.masked")
+        fasta_file=$(compgen -G "$ROI_hardmasked_dir/${genome}*")
             
         # Run makeblastdb on hard masked ROI sequences for single contig genome    
     	makeblastdb -in "$fasta_file" -dbtype nucl -parse_seqids -title "${genome}" -out "$output_dir/${genome}"

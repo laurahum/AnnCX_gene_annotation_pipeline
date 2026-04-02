@@ -41,7 +41,7 @@ genewise_run(){
         echo "$genome"
         
         # Dynamically find the matching file for $genome
-        fasta_file=$(compgen -G "$ROI_hardmasked_dir/${genome}*.fasta.masked")
+        fasta_file=$(compgen -G "$ROI_hardmasked_dir/${genome}*")
 	
         # Run genewise
     	genewisedb -prodb "$query_dir" -dnas "$fasta_file" -gff > "$output_dir/${genome}_ROI_${gene_to_annotate}_prot_genewise.gff"
